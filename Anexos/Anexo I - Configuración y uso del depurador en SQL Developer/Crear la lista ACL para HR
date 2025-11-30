@@ -1,0 +1,36 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+  l_acl_name VARCHAR2(100) := 'hr_debug_acl.xml'; 
+  -- ¡REEMPLAZA con la IP real de tu máquina!
+  l_host_ip  VARCHAR2(15)  := '192.168.1.186';
+BEGIN
+  -- 1. Eliminar ACL antigua si existe (para no tener dos reglas)
+  BEGIN
+    DBMS_NETWORK_ACL_ADMIN.DROP_ACL(acl => l_acl_name);
+  EXCEPTION
+    WHEN OTHERS THEN NULL;
+  END;
+  -- 2. Crear ACL con el privilegio 'jdwp' (sin cambios)
+  DBMS_NETWORK_ACL_ADMIN.CREATE_ACL(
+    acl         => l_acl_name,
+    description => 'ACL para la depuración de HR',
+    principal   => 'HR',
+    is_grant    => TRUE,
+    privilege   => 'jdwp'
+  );
+  -- 3. Asignar ACL a la IP real del HOST
+  DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL(
+    acl  => l_acl_name,
+    host => l_host_ip -- Usa la IP real del host aquí
+  );
+  COMMIT;
+  DBMS_OUTPUT.PUT_LINE('ACL actualizada a ' || l_host_ip || ' correctamente.');
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+    ROLLBACK;
+END;
+/
+
+GRANT DEBUG CONNECT SESSION, DEBUG ANY PROCEDURE TO HR;
