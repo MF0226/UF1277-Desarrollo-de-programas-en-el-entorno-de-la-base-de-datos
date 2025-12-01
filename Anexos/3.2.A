@@ -1,3 +1,5 @@
+SET SERVEROUTPUT ON;
+
 DECLARE
    vNumero  NUMBER      := 0.9E126;
    vEntero  PLS_INTEGER := 2147483647;
