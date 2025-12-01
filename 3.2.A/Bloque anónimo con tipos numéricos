@@ -1,0 +1,12 @@
+SET SERVEROUTPUT ON;
+
+DECLARE
+   vNumero  NUMBER         := 0.9E126;
+   vEntero  SIMPLE_INTEGER := 2147483647;
+   vNatural NATURAL        := 2147483647;
+BEGIN
+   DBMS_OUTPUT.PUT_LINE('El número es: '||vNumero);
+   DBMS_OUTPUT.PUT_LINE('El número entero es: '||vEntero);
+   DBMS_OUTPUT.PUT_LINE('El número natural es: '||vNatural);
+END;
+/
