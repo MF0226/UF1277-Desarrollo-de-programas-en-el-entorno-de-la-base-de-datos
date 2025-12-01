@@ -1,0 +1,10 @@
+DECLARE
+    vValor BOOLEAN; -- por defecto toma el valor nulo
+BEGIN
+    IF vValor = TRUE THEN
+        DBMS_OUTPUT.PUT_LINE ('Verdadero');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE ('Falso');
+    END IF;
+END;
+/
