@@ -1,0 +1,13 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    Selector BOOLEAN;
+BEGIN
+    Selector := TRUE;
+    IF Selector = TRUE THEN
+        DBMS_OUTPUT.PUT_LINE ('Verdadero');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE ('Falso');
+    END IF;
+END;
+/
