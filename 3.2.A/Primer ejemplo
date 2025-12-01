@@ -1,0 +1,14 @@
+DECLARE
+    vValor BOOLEAN; -- por defecto toma el valor nulo
+    vResultado BOOLEAN;
+BEGIN
+    vResultado := vValor AND TRUE;
+    IF vResultado = TRUE THEN
+        DBMS_OUTPUT.PUT_LINE ('Verdadero');
+    ELSIF vResultado = FALSE THEN
+        DBMS_OUTPUT.PUT_LINE ('Falso');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE ('No se');
+    END IF;
+END;
+/
