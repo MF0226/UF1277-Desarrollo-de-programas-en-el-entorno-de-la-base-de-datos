@@ -1,0 +1,12 @@
+SET SERVEROUTPUT ON;
+
+DECLARE
+    cCadenaLongitudFija        CHAR(10)   := 'Prueba';
+    cCadenaLongitudVariable    VARCHAR(10):= 'Prueba';
+BEGIN
+    DBMS_OUTPUT.PUT_LINE ('Cadena longitud fija:       ##'
+                          ||cCadenaLongitudFija||'##');
+    DBMS_OUTPUT.PUT_LINE ('Cadena longitud variable: ##'
+                          ||cCadenaLongitudVariable||'##');
+END;
+/
