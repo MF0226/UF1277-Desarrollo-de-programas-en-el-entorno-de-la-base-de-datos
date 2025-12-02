@@ -1,0 +1,17 @@
+DECLARE
+    vGlobal NUMERIC(1,0) := 0;
+BEGIN
+    DECLARE
+        vLocal CHAR(4) := 'Cero';
+    BEGIN
+        NULL; -- Esta instrucción no tiene efecto alguno
+    END;
+
+    DBMS_OUTPUT.PUT_LINE(
+        'La variable global tiene el valor ' ||
+        vGlobal ||
+        ' y la variable local tiene el valor ' ||
+        vLocal
+    );
+END;
+/
