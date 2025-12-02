@@ -9,8 +9,7 @@ BEGIN
     INTO  vNombre,
           vSalario,
           vFechaContrato
-    FROM  EMPLOYEES
-    WHERE EMPLOYEE_ID = 100 OR EMPLOOYEE_ID=200;
+    FROM  EMPLOYEES;
 
     DBMS_OUTPUT.PUT_LINE('El nombre es: ' || vNombre);
     DBMS_OUTPUT.PUT_LINE('El salario es: ' || TO_CHAR(vSalario,'99,9999L'));
