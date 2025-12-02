@@ -1,0 +1,15 @@
+DECLARE
+    vFecha DATE;
+BEGIN
+    SELECT SYSDATE
+    INTO vFecha
+    FROM DUAL;
+
+    DBMS_OUTPUT.PUT_LINE('Fecha con el formato por defecto:'
+                         || vFecha);
+
+    DBMS_OUTPUT.PUT_LINE('Fecha formateada:                '
+                         || TO_CHAR(vFecha,
+                                   '"Día "dd/mm/yyyy" a las "hh24:mi:ss'));
+END;
+/
