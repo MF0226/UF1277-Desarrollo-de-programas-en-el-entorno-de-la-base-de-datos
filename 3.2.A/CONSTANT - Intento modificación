@@ -1,0 +1,12 @@
+DECLARE
+    Selector CONSTANT BOOLEAN := TRUE;
+BEGIN
+    Selector := TRUE;
+
+    IF Selector = TRUE THEN
+        DBMS_OUTPUT.PUT_LINE('Verdadero');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Falso');
+    END IF;
+END;
+/
