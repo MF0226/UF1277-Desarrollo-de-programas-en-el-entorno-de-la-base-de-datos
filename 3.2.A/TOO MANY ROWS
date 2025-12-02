@@ -1,0 +1,20 @@
+DECLARE
+    vNombre        EMPLOYEES.FIRST_NAME%TYPE;
+    vSalario       EMPLOYEES.SALARY%TYPE;
+    vFechaContrato EMPLOYEES.HIRE_DATE%TYPE;
+BEGIN
+    SELECT FIRST_NAME,
+           SALARY,
+           HIRE_DATE
+    INTO  vNombre,
+          vSalario,
+          vFechaContrato
+    FROM  EMPLOYEES
+    WHERE EMPLOYEE_ID = 100 OR EMPLOOYEE_ID=200;
+
+    DBMS_OUTPUT.PUT_LINE('El nombre es: ' || vNombre);
+    DBMS_OUTPUT.PUT_LINE('El salario es: ' || TO_CHAR(vSalario,'99,9999L'));
+    DBMS_OUTPUT.PUT_LINE('La fecha de contratación es: ' ||
+                         TO_CHAR(vFechaContrato,'FMDay Month Year'));
+END;
+/
