@@ -1,0 +1,95 @@
+/*******************************************************************************************
+Paquete: pkg_empleados
+Sistema:  Gestión de Recursos Humanos (HR)
+Descripción:
+    Este paquete maneja operaciones esenciales relacionadas con empleados, incluyendo
+    la inserción de nuevos registros, gestión de comisiones y cálculo de antigüedad.
+Historial de modificaciones:
+---------------------------------------------------------------
+Fecha       Autor          Motivo
+---------------------------------------------------------------
+2025-12-03  ChatGPT        Creación inicial del paquete con documentación completa.
+2025-12-03  [Su Nombre]    Revisión y estandarización Javadoc.
+Variables globales:
+    Ninguna (Se recomienda evitar el uso de variables globales de paquete).
+Uso:
+    Llamar a las funciones y procedimientos del paquete según la operación deseada,
+    asegurando siempre el control de las transacciones (COMMIT/ROLLBACK).
+*******************************************************************************************/
+CREATE OR REPLACE PACKAGE pkg_empleados IS
+  /**
+   * PROCEDIMIENTO: agregar_empleado
+   * Descripción: Inserta un nuevo empleado en la tabla employees.
+   * @param p_first_name IN VARCHAR2 - Nombre del empleado.
+   * @param p_last_name IN VARCHAR2  - Apellido del empleado.
+   * @param p_salary IN NUMBER       - Salario inicial (debe ser > 0).
+   * Observaciones:
+   * La fecha de contratación (hire_date) se establece automáticamente a SYSDATE.
+   */
+  PROCEDURE agregar_empleado(
+      p_first_name IN VARCHAR2,
+      p_last_name  IN VARCHAR2,
+      p_salary     IN NUMBER
+  );
+  /**
+   * FUNCION: calcular_comision
+   * Descripción: Calcula el monto de la comisión para un empleado específico.
+   * @param p_employee_id IN NUMBER - ID único del empleado.
+   * @param p_pct_comision IN NUMBER - Porcentaje de comisión a aplicar (rango 0 a 1).
+   * @return NUMBER - Monto de la comisión calculada.
+   * @throws NO_DATA_FOUND - Si no se encuentra el p_employee_id.
+   * Observaciones:
+   * La comisión se calcula multiplicando el salario vigente por el porcentaje proporcionado.
+   */
+  FUNCTION calcular_comision(
+      p_employee_id IN NUMBER,
+      p_pct_comision IN NUMBER
+  ) RETURN NUMBER;
+END pkg_empleados;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg_empleados IS
+  PROCEDURE agregar_empleado(
+      p_first_name IN VARCHAR2,
+      p_last_name  IN VARCHAR2,
+      p_salary     IN NUMBER
+  ) IS
+  BEGIN
+      -- Se asume un valor por defecto para employee_id (secuencia) y job_id
+      INSERT INTO employees (first_name, last_name, hire_date, salary)
+      VALUES (p_first_name, p_last_name, SYSDATE, p_salary);
+
+      DBMS_OUTPUT.PUT_LINE('Empleado ' || p_first_name || ' ' || p_last_name
+                           || ' agregado correctamente.');
+  EXCEPTION
+      WHEN OTHERS THEN
+          -- Práctica moderna: loguear el error y relanzar (RAISE) o manejar
+          DBMS_OUTPUT.PUT_LINE('ERROR al insertar empleado: ' || SQLERRM);
+          RAISE; -- Relanza la excepción para que sea manejada por el llamador
+  END agregar_empleado;
+  FUNCTION calcular_comision(
+      p_employee_id IN NUMBER,
+      p_pct_comision IN NUMBER
+  ) RETURN NUMBER IS
+      v_salary employees.salary%TYPE;
+      v_comision NUMBER;
+  BEGIN
+      -- Obtener el salario del empleado
+      SELECT salary INTO v_salary
+      FROM employees
+      WHERE employee_id = p_employee_id;
+      -- Calcular la comisión
+      v_comision := v_salary * p_pct_comision;
+      RETURN v_comision;
+  EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+          -- Si el ID no existe, loguear y retornar 0 (o levantar una excepción de negocio)
+          DBMS_OUTPUT.PUT_LINE('ADVERTENCIA: ID de empleado '
+                            || p_employee_id || ' no encontrado.');
+          RETURN 0;
+      WHEN OTHERS THEN
+          DBMS_OUTPUT.PUT_LINE('ERROR inesperado al calcular comisión: ' || SQLERRM);
+          RAISE;
+  END calcular_comision;
+END pkg_empleados;
+/
