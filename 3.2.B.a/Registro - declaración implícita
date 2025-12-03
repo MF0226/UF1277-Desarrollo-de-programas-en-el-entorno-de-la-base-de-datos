@@ -1,0 +1,25 @@
+DECLARE
+   vEmpleado1 employees%ROWTYPE;
+   vEmpleado2 employees%ROWTYPE;
+BEGIN
+   -- Asignación manual de campos
+   vEmpleado1.first_name     := 'Roberto';
+   vEmpleado1.hire_date      := SYSDATE;
+   vEmpleado1.salary         := 1000;
+   vEmpleado1.commission_pct := 0.5;
+
+   DBMS_OUTPUT.PUT_LINE(vEmpleado1.first_name
+                        || ' contratado el '
+                        || TO_CHAR(vEmpleado1.hire_date, 'DD/MM/YY'));
+
+   -- Asignación de valores mediante SELECT INTO
+   SELECT *
+   INTO vEmpleado2
+   FROM employees
+   WHERE employee_id = 100;
+
+   DBMS_OUTPUT.PUT_LINE(vEmpleado2.first_name
+                        || ' contratado el '
+                        || TO_CHAR(vEmpleado2.hire_date, 'DD/MM/YY'));
+END;
+/
