@@ -1,0 +1,14 @@
+DECLARE
+   TYPE tCoordenada IS RECORD (X NUMBER,
+                               Y NUMBER,
+                               Z NUMBER);
+   vPunto tCoordenada;
+BEGIN
+   SELECT 1, 2, 3
+   INTO vPunto
+   FROM DUAL;
+   DBMS_OUTPUT.PUT_LINE('X = ' || vPunto.X);
+   DBMS_OUTPUT.PUT_LINE('Y = ' || vPunto.Y);
+   DBMS_OUTPUT.PUT_LINE('Z = ' || vPunto.Z);
+END;
+/
