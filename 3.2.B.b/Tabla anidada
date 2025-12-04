@@ -2,8 +2,8 @@ SET SERVEROUTPUT ON
 
 DECLARE
    cMaximoAlumnos CONSTANT INTEGER := 15;
-   -- VARRAY de tipo VARCHAR que puede contener
-   -- un máximo de cMaximoAlumnos
+   -- Tabla anidada que contiene VARRAY de nombre
+   -- cada VARRAY puede tener un máximo de cMaximoAlumnos
    TYPE tNombre IS VARRAY(cMaximoAlumnos) OF VARCHAR2(60);
    TYPE tTablaAula IS TABLE OF tNombre;
    vAula1 tTablaAula := tTablaAula(tNombre('Fermín,Gómez,García'
