@@ -1,0 +1,25 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+   -- Constante con el número de un empleado del dept. 10
+   cIDEmpleado EMPLOYEES.EMPLOYEE_ID%TYPE := 200;
+   /* Creación de un arreglo de longitud variable que guarda
+      los nombres en castellano de los departamentos */
+   vEmpleado   EMPLOYEES%ROWTYPE;
+   cTexto      VARCHAR2(40) := 'El empleado trabaja en ';
+BEGIN
+   -- Selección de los datos del empleado
+   SELECT * INTO vEmpleado
+   FROM EMPLOYEES
+   WHERE EMPLOYEE_ID=cIDEmpleado;
+   -- Comprobación uno por uno de todos los departamentos
+   IF vEmpleado.department_id=10
+      THEN DBMS_OUTPUT.PUT_LINE(cTexto||'Administración');
+      ELSIF vEmpleado.department_id=20
+            THEN DBMS_OUTPUT.PUT_LINE(cTexto ||'Marketing');
+      ELSIF vEmpleado.department_id=30
+            THEN DBMS_OUTPUT.PUT_LINE(cTexto ||'Compras');
+      ELSE DBMS_OUTPUT.PUT_LINE('Departamento no traducido');
+   END IF;
+END;
+/
