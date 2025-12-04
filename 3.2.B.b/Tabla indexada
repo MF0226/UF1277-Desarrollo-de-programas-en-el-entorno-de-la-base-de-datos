@@ -1,0 +1,40 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Tipo de registro para coordenadas 3D
+    TYPE tCoordenada IS RECORD (
+        vX NUMBER,
+        vY NUMBER,
+        vZ NUMBER
+    );
+
+    -- Tabla asociativa de coordenadas
+    TYPE tVertices IS TABLE OF tCoordenada INDEX BY BINARY_INTEGER;
+    vPoligono tVertices;
+
+    -- Función para calcular distancia euclidiana entre dos puntos
+    FUNCTION Distancia(a tCoordenada, b tCoordenada) RETURN NUMBER IS
+    BEGIN
+        RETURN ROUND(
+            SQRT(
+                POWER(b.vX - a.vX, 2) +
+                POWER(b.vY - a.vY, 2) +
+                POWER(b.vZ - a.vZ, 2)
+            )
+        );
+    END;
+BEGIN
+    -- Insertamos directamente los vértices del polígono
+    vPoligono(0) := tCoordenada(0, 0, 0);
+    vPoligono(1) := tCoordenada(0, 5, 10);
+    vPoligono(2) := tCoordenada(10, 10, 0);
+
+    -- Bucle para imprimir longitudes de todos los lados
+    FOR i IN 0 .. vPoligono.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            'El lado ' || (i+1) || ' tiene una distancia de ' ||
+            Distancia(vPoligono(i), vPoligono(MOD(i+1, vPoligono.COUNT)))
+        );
+    END LOOP;
+END;
+/
