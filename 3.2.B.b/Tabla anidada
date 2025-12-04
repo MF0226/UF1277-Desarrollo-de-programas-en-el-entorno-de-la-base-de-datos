@@ -1,0 +1,29 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+   cMaximoAlumnos CONSTANT INTEGER := 15;
+   -- VARRAY de tipo VARCHAR que puede contener
+   -- un máximo de cMaximoAlumnos
+   TYPE tNombre IS VARRAY(cMaximoAlumnos) OF VARCHAR2(60);
+   TYPE tTablaAula IS TABLE OF tNombre;
+   vAula1 tTablaAula := tTablaAula(tNombre('Fermín,Gómez,García'
+                                          ,'Roberto,Gómez,García')
+                                  ,tNombre('Aurelio,Torres,Jiménez')
+                                  ,tNombre('María,Fernández,Mora')
+                                  ,tNombre('Ana,de Miguel,Gómez'));
+   vAula2 tTablaAula := tTablaAula(tNombre('Fernando,Pi,Torres')
+                                  ,tNombre('María,Fresno,Herrero'));
+BEGIN
+   DBMS_OUTPUT.PUT_LINE('Listado de alumnos del aula: 1');
+   FOR i IN vAula1.FIRST .. vAula1.LAST LOOP
+      FOR j IN vAula1(i).FIRST .. vAula1(i).LAST LOOP
+         DBMS_OUTPUT.PUT_LINE('Alumnos: '||i||'.'||j
+                            ||' - '||vAula1(i)(j));
+      END LOOP;
+   END LOOP;
+   DBMS_OUTPUT.PUT_LINE('Listado de alumnos del aula: 2');
+   FOR i IN vAula2.FIRST .. vAula2.LAST LOOP
+      DBMS_OUTPUT.PUT_LINE('Alumnos: '||i||' - '||vAula2(i)(1));
+   END LOOP;
+END;
+/
