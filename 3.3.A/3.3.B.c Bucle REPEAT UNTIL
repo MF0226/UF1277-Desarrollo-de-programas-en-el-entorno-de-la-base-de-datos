@@ -1,0 +1,27 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Variable para el número a calcular. Usamos SIMPLE_INTEGER para mejor rendimiento.
+    vNumero    SIMPLE_INTEGER := 13;
+    -- El resultado debe ser NUMBER debido a la magnitud del factorial.
+    vResultado NUMBER := 1;
+    -- Cadena de texto para el mensaje de salida.
+    vTexto     VARCHAR2(100) := 'El factorial de ' || vNumero || ' es:';
+BEGIN
+    -- Chequeo previo: Si el número es menor que 1, lanzamos un error inmediatamente.
+    IF vNumero < 1 THEN
+        RAISE_APPLICATION_ERROR(-20001,'No se ha podido calcular. El número debe ser positivo.');
+    END IF;
+    -- Bucle REPEAT UNTIL simulado (se ejecuta al menos una vez).
+    LOOP
+        -- Acumula el resultado del factorial (ejecuta primero).
+        vResultado := vResultado * vNumero;
+        -- Decrementa el número en 1.
+        vNumero := vNumero - 1;
+        -- Condición de salida: Sale cuando vNumero llega a 1 (evalúa al final).
+        EXIT WHEN vNumero=1;
+    END LOOP;
+    -- Muestra el resultado formateado. No se necesita IF, ya que el chequeo se hizo antes.
+    DBMS_OUTPUT.PUT_LINE(vTexto || TO_CHAR(vResultado,'999,999,999,999'));
+END;
+/
