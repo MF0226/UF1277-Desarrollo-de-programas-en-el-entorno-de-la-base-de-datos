@@ -1,0 +1,20 @@
+SET SERVEROUTPUT ON
+DECLARE
+    -- Tabla anidada basada en estructura de tabla
+    TYPE tTablaEmpleados IS TABLE OF employees%ROWTYPE;
+    vEmpleados tTablaEmpleados;
+    vJSON JSON;
+BEGIN
+    -- Cargamos datos desde la tabla
+    SELECT *
+    BULK COLLECT INTO vEmpleados
+    FROM employees
+    WHERE department_id = 90;
+    
+    -- Convertimos a JSON
+    vJSON := JSON(vEmpleados);
+    
+    -- Mostramos solo los primeros 500 caracteres
+    DBMS_OUTPUT.PUT_LINE(SUBSTR(JSON_SERIALIZE(vJSON PRETTY), 1, 500));
+END;
+/
