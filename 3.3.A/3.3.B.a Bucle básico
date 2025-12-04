@@ -1,0 +1,39 @@
+DECLARE
+    -- Constante con número de iteraciones. Usamos SIMPLE_INTEGER para velocidad.
+    cTotalIteraciones CONSTANT SIMPLE_INTEGER := 100000000;
+    -- Variables SIMPLE_INTEGER deben ser inicializadas (a 0 en este caso)
+    -- para satisfacer la restricción NOT NULL.
+    vInicio   SIMPLE_INTEGER := 0;
+    vFin      SIMPLE_INTEGER := 0;
+    vContador SIMPLE_INTEGER := 0;
+    -- Usamos NUMBER para el resultado de la división (segundos con decimales)
+    vTiempo   NUMBER;
+BEGIN
+    -- 1. Registrar el momento del inicio del programa en centésimas de segundo
+    vInicio := DBMS_UTILITY.GET_TIME;
+
+    -- 2. Ejecutar el bucle básico (LOOP)
+    LOOP
+        vContador := vContador + 1;
+
+        -- Salir cuando se alcanza el total de iteraciones
+        EXIT WHEN vContador = cTotalIteraciones;
+    END LOOP;
+    -- 3. Registrar el momento final en centésimas de segundo
+    vFin := DBMS_UTILITY.GET_TIME;
+
+    -- 4. Calcular el tiempo total transcurrido (vFin - vInicio)
+    vTiempo := vFin - vInicio;
+
+    -- 5. Mostrar el resultado: Convertir centésimas de segundo a segundos
+    --  (dividir por 100)
+    DBMS_OUTPUT.PUT_LINE('Iteraciones: '
+                       || TO_CHAR(cTotalIteraciones, 'FM999,999,999'));
+    DBMS_OUTPUT.PUT_LINE('Ha tardado '
+                        || TO_CHAR(vTiempo / 100, '99.999')
+                        || ' segundos (medido en centésimas).');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Ocurrió un error: ' || SQLERRM);
+END;
+/
