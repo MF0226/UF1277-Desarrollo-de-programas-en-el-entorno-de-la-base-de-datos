@@ -25,7 +25,6 @@ BEGIN
    -- Modifica un alumno nuevamente
    vAlumnos(1) := 'Roberto,Herrera,';
 
-   -- El borrado no está permitido    
    DBMS_OUTPUT.PUT_LINE('Número de alumnos identificados: ' || vAlumnos.COUNT);
    DBMS_OUTPUT.PUT_LINE('Listado de alumnos');
 
