@@ -1,26 +1,50 @@
 SET SERVEROUTPUT ON
+
 DECLARE
-    -- Tipos para trabajar con JSON
+    -- JSON_ARRAY_T: Tipo nativo de Oracle para trabajar con arrays JSON
+    -- Proporciona métodos para manipular arrays JSON de forma dinámica
     vJSONArray JSON_ARRAY_T;
+    
+    -- DBMS_SQL.VARCHAR2_TABLE: Colección indexada predefinida por Oracle
+    -- Es una tabla asociativa de VARCHAR2(32767) indexada por BINARY_INTEGER
+    -- No requiere declaración de TYPE, ya viene incluida en el paquete DBMS_SQL
     vNombres DBMS_SQL.VARCHAR2_TABLE;
+    
 BEGIN
-    -- Creamos un array JSON desde cero
+    -- Construcción del array JSON
+    -- JSON_ARRAY_T(): Constructor que crea un array JSON vacío
     vJSONArray := JSON_ARRAY_T();
+    
+    -- append(): Método que añade elementos al final del array JSON
+    -- Acepta diferentes tipos de datos: STRING, NUMBER, BOOLEAN, NULL, objetos, arrays
     vJSONArray.append('Ana');
     vJSONArray.append('Luis');
     vJSONArray.append('Carmen');
     vJSONArray.append('Roberto');
     
+    -- Visualización del contenido JSON
+    -- to_string: Método que serializa el array JSON a formato texto legible
     DBMS_OUTPUT.PUT_LINE('JSON creado: ' || vJSONArray.to_string);
+    
+    -- get_size: Método que devuelve el número de elementos en el array
+    -- Nota: JSON_ARRAY_T indexa desde 0 (como en JavaScript), no desde 1
     DBMS_OUTPUT.PUT_LINE('Número de elementos: ' || vJSONArray.get_size);
     
-    -- Recorremos el JSON y lo pasamos a una colección PL/SQL
+    -- Conversión de JSON a colección PL/SQL
+    -- IMPORTANTE: Los índices en JSON_ARRAY_T comienzan en 0
+    -- Los índices en colecciones PL/SQL típicamente comienzan en 1
     FOR i IN 0 .. vJSONArray.get_size - 1 LOOP
+        -- get_string(i): Método que extrae el elemento en posición i como VARCHAR2
+        -- Ajustamos el índice: JSON (base 0) → PL/SQL (base 1)
         vNombres(i+1) := vJSONArray.get_string(i);
     END LOOP;
     
-    -- Mostramos la colección
+    -- Visualización de la colección PL/SQL resultante
+    -- CHR(10): Carácter de nueva línea (salto de línea)
     DBMS_OUTPUT.PUT_LINE(CHR(10) || 'Colección PL/SQL:');
+    
+    -- COUNT: Atributo que devuelve el número de elementos en la colección
+    -- Ahora recorremos con índices base 1 (estándar en PL/SQL)
     FOR i IN 1 .. vNombres.COUNT LOOP
         DBMS_OUTPUT.PUT_LINE(i || ': ' || vNombres(i));
     END LOOP;
