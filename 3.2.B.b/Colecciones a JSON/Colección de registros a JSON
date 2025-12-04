@@ -1,0 +1,34 @@
+SET SERVEROUTPUT ON
+DECLARE
+    -- Tipo RECORD para empleado
+    TYPE tEmpleado IS RECORD (
+        vId     NUMBER,
+        vNombre VARCHAR2(50),
+        vSalario NUMBER
+    );
+    
+    -- Tabla indexada de empleados
+    TYPE tEmpleados IS TABLE OF tEmpleado INDEX BY PLS_INTEGER;
+    vEmpleados tEmpleados;
+    vJSON JSON;
+BEGIN
+    -- Poblamos la colección con datos
+    vEmpleados(1).vId := 100;
+    vEmpleados(1).vNombre := 'Juan Pérez';
+    vEmpleados(1).vSalario := 3000;
+    
+    vEmpleados(2).vId := 101;
+    vEmpleados(2).vNombre := 'María García';
+    vEmpleados(2).vSalario := 3500;
+    
+    vEmpleados(3).vId := 102;
+    vEmpleados(3).vNombre := 'Pedro López';
+    vEmpleados(3).vSalario := 2800;
+    
+    -- Convertimos a JSON
+    vJSON := JSON(vEmpleados);
+    
+    -- Mostramos el resultado formateado
+    DBMS_OUTPUT.PUT_LINE(JSON_SERIALIZE(vJSON PRETTY));
+END;
+/
