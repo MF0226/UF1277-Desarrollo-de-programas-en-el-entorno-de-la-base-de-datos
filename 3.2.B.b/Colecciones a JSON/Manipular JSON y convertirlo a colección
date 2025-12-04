@@ -1,0 +1,28 @@
+SET SERVEROUTPUT ON
+DECLARE
+    -- Tipos para trabajar con JSON
+    vJSONArray JSON_ARRAY_T;
+    vNombres DBMS_SQL.VARCHAR2_TABLE;
+BEGIN
+    -- Creamos un array JSON desde cero
+    vJSONArray := JSON_ARRAY_T();
+    vJSONArray.append('Ana');
+    vJSONArray.append('Luis');
+    vJSONArray.append('Carmen');
+    vJSONArray.append('Roberto');
+    
+    DBMS_OUTPUT.PUT_LINE('JSON creado: ' || vJSONArray.to_string);
+    DBMS_OUTPUT.PUT_LINE('Número de elementos: ' || vJSONArray.get_size);
+    
+    -- Recorremos el JSON y lo pasamos a una colección PL/SQL
+    FOR i IN 0 .. vJSONArray.get_size - 1 LOOP
+        vNombres(i+1) := vJSONArray.get_string(i);
+    END LOOP;
+    
+    -- Mostramos la colección
+    DBMS_OUTPUT.PUT_LINE(CHR(10) || 'Colección PL/SQL:');
+    FOR i IN 1 .. vNombres.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE(i || ': ' || vNombres(i));
+    END LOOP;
+END;
+/
