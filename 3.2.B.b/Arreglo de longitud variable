@@ -1,0 +1,36 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+   cMaximoAlumnos CONSTANT INTEGER := 15;
+   -- VARRAY de tipo VARCHAR que puede contener un máximo de cMaximoAlumnos
+   TYPE tNombre IS VARRAY(cMaximoAlumnos) OF VARCHAR2(60);
+   /* Se crea automáticamente un constructor con el mismo nombre que
+      el tipo que sirve para su inicialización */
+   vAlumnos tNombre := tNombre(
+       'Fermín,Gómez,García',
+       'Aurelio,Torres,Jiménez',
+       'María,Fernández,Mora',
+       'Jimena María,de Miguel,Gómez'
+   );
+BEGIN
+   -- Modifica un alumno
+   vAlumnos(1) := 'Roberto,Herrera,';
+   
+   -- Añade un alumno si hay espacio
+   IF vAlumnos.COUNT + 1 < vAlumnos.LIMIT THEN
+      vAlumnos.EXTEND(1);
+      vAlumnos(vAlumnos.LAST) := 'Juan Francisco,Gutiérrez,Zapata';
+   END IF;
+
+   -- Modifica un alumno nuevamente
+   vAlumnos(1) := 'Roberto,Herrera,';
+
+   -- El borrado no está permitido    
+   DBMS_OUTPUT.PUT_LINE('Número de alumnos identificados: ' || vAlumnos.COUNT);
+   DBMS_OUTPUT.PUT_LINE('Listado de alumnos');
+
+   FOR i IN vAlumnos.FIRST .. vAlumnos.LAST LOOP
+      DBMS_OUTPUT.PUT_LINE(i || ' - ' || vAlumnos(i));
+   END LOOP;
+END;
+/
