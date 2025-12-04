@@ -1,0 +1,49 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Constante que define el inicio del rango (un solo valor).
+    cInicio INTEGER := 1;
+    
+    -- Constante que define el final del rango (un solo valor).
+    cFin    INTEGER := 5;
+BEGIN
+    
+    -- Etiqueta opcional para el bucle FOR externo (un identificador único).
+    <<BuclePara>>
+    -- Bucle FOR: 'i' es el índice, un valor singular que cambia en cada iteración.
+    FOR i IN cInicio .. cFin LOOP
+        
+        -- Etiqueta opcional para el bloque anidado (un identificador único).
+        <<BloqueAnidado>>
+        DECLARE
+            -- Variable que toma el valor actual del índice 'i' (un solo número por vez).
+            vNumero    PLS_INTEGER := i;
+            
+            -- Variable para acumular el resultado (un solo factorial). Se inicializa en 1.
+            vResultado NUMBER := 1;
+            
+            -- Cadena de texto para el mensaje de salida (un solo mensaje por cálculo).
+            vTexto     VARCHAR2(100) := 'El factorial de ' || i || ' es:';
+        BEGIN
+            -- Etiqueta opcional para el bucle WHILE (un identificador único).
+            <<BucleMientras>>
+            -- Bucle WHILE: Se enfoca en un solo vNumero.
+            WHILE vNumero > 1 LOOP
+                -- El vResultado se actualiza con una multiplicación.
+                vResultado := vResultado * vNumero;
+                
+                -- El vNumero se decrementa en 1 (un solo paso).
+                vNumero := vNumero - 1;
+                
+            END LOOP BucleMientras;
+            
+            -- Muestra un único resultado por iteración del bucle FOR.
+            DBMS_OUTPUT.PUT_LINE(vTexto || TO_CHAR(vResultado
+                                                  ,'999,999,999,999'));
+            
+        END BloqueAnidado;
+        
+    END LOOP BuclePara;
+    
+END;
+/
