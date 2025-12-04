@@ -1,0 +1,34 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+   -- Constante con el número de un empleado del dpto. 10
+   cIDEmpleado EMPLOYEES.EMPLOYEE_ID%TYPE := 200;
+   -- Declaración implícita de un registro basado en tabla
+   /* Creación de un arreglo de longitud variable que guarda
+      los nombres en castellano de los departamentos */
+   vEmpleado   EMPLOYEES%ROWTYPE;
+   TYPE tNombreDept
+      IS RECORD (vID     DEPARTMENTS.DEPARTMENT_ID%TYPE
+                ,vNombre VARCHAR2(20));
+   TYPE tNombresDptos IS VARRAY (11) OF tNombreDept;
+   -- Asigna un nombre en castellano a los departamentos 10, 20 y 30
+   vNombresDptos tNombresDptos
+                 := tNombresDptos(tNombreDept(10,'Administración')
+                                 ,tNombreDept(20,'Marketing')
+                                 ,tNombreDept(30,'Compras'));
+BEGIN
+   -- Selección de los datos del empleado en el registro vEmpleado
+   SELECT * INTO vEmpleado
+   FROM EMPLOYEES
+   WHERE EMPLOYEE_ID=cIDEmpleado;
+   -- Recorre el arreglo buscando el elemento correspondiente al
+   -- departamento del empleado seleccionado
+   FOR I IN vNombresDptos.FIRST .. vNombresDptos.LAST LOOP
+      -- Cuando lo encuentra, muestra el nombre en castellano
+      IF vNombresDptos(i).vID=vEmpleado.department_id
+         THEN DBMS_OUTPUT.PUT_LINE('El empleado trabaja en '
+                                  ||vNombresDptos(i).vNombre);
+      END IF;
+   END LOOP;
+END;
+/
