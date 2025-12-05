@@ -1,0 +1,26 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+   c_límite        CONSTANT NUMBER := 50;
+   CURSOR c_dep (p_limite NUMBER) IS
+      SELECT department_id, department_name
+      FROM departments
+      WHERE department_id < p_limite
+      ORDER BY department_id;
+
+   r_dep c_dep%ROWTYPE;
+BEGIN
+   OPEN c_dep(c_límite);
+   FETCH c_dep INTO r_dep;
+
+   WHILE c_dep%FOUND LOOP
+      DBMS_OUTPUT.PUT_LINE('Departamento: ' ||
+                           r_dep.department_id || ' ' ||
+                           r_dep.department_name);
+
+      FETCH c_dep INTO r_dep;
+   END LOOP;
+
+   CLOSE c_dep;
+END;
+/
