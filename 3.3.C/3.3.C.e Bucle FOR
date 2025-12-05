@@ -1,0 +1,43 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Declara una variable/constante numérica para establecer el límite del ID de departamento.
+    cIdentificadorLimite INTEGER := 50;
+
+BEGIN
+    -- Etiqueta del bloque/bucle anidado.
+    <<Departamentos>>
+    -- Inicia el Bucle FOR de Cursor Implícito (Departamentos).
+    -- Esta estructura crea y cierra automáticamente el cursor, y declara el registro rDep.
+    FOR rDep IN (SELECT department_id, department_name
+                 FROM DEPARTMENTS
+                 -- Filtra los departamentos cuyo ID sea menor al límite definido (50).
+                 WHERE DEPARTMENT_ID < cIdentificadorLimite
+                 ORDER BY DEPARTMENT_ID)
+    LOOP
+        -- Muestra la información del departamento actual (fila 'maestra').
+        DBMS_OUTPUT.PUT_LINE ('Departamento :'||rDep.DEPARTMENT_ID
+                              ||' '||rDep.DEPARTMENT_NAME);
+
+        -- Comentario que indica el inicio del procesamiento anidado (tabla de detalle).
+        -- Procesa los empleados que trabajan en el departamento
+
+        -- Etiqueta del bloque/bucle anidado.
+        <<Empleados>>
+        -- Inicia el Bucle FOR de Cursor Implícito Anidado (Empleados).
+        -- Este bucle se ejecuta completamente por cada departamento encontrado en el bucle exterior.
+        FOR rEmp IN (SELECT FIRST_NAME, LAST_NAME
+                     FROM EMPLOYEES
+                     -- Crucial: Filtra los empleados usando el ID del departamento de la fila maestra (rDep).
+                     WHERE DEPARTMENT_ID = rDep.DEPARTMENT_ID
+                     ORDER BY LAST_NAME)
+        LOOP
+            -- Muestra los datos del empleado. CHR(9) inserta un tabulador para sangrar la salida.
+            DBMS_OUTPUT.PUT_LINE (CHR(9)||rEmp.FIRST_NAME
+                                  ||' '||rEmp.LAST_NAME);
+        END LOOP Empleados; -- Fin del Bucle FOR Implícito de Empleados.
+
+    END LOOP Departamentos; -- Fin del Bucle FOR Implícito de Departamentos.
+
+END;
+/
