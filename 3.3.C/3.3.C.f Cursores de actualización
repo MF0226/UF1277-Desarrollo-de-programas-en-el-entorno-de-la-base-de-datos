@@ -1,0 +1,64 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Cursor explícito para seleccionar y bloquear (FOR UPDATE) empleados del departamento 30.
+    CURSOR cEmp IS
+        SELECT EMPLOYEE_ID
+             , FIRST_NAME
+             , LAST_NAME
+             , SALARY
+        FROM EMPLOYEES
+        WHERE DEPARTMENT_ID = 30
+        -- Limita la selección a las 3 primeras filas que cumplan la condición.
+        AND ROWNUM <= 3
+        ORDER BY EMPLOYEE_ID  -- Se usa un campo sensato para ordenar la selección de las 3 filas.
+        -- Cláusula esencial para bloquear las filas seleccionadas y permitir la Actualización Posicional.
+        FOR UPDATE;
+        
+    -- Registro que hereda la estructura del cursor cEmp (necesario para FETCH).
+    rEmp cEmp%ROWTYPE;
+
+BEGIN
+    -- 1. Apertura del cursor. Ejecuta la consulta y bloquea las 3 filas en la base de datos.
+    OPEN cEmp;
+    
+    -- 2. Primer FETCH para inicializar el registro y la condición de bucle.
+    FETCH cEmp INTO rEmp;
+    
+    -- 3. Bucle WHILE para procesar cada una de las 3 filas extraídas.
+    WHILE cEmp%FOUND LOOP
+        -- Muestra la información original del empleado antes de la modificación.
+        DBMS_OUTPUT.PUT_LINE (rEmp.FIRST_NAME||' '
+                              ||rEmp.LAST_NAME||' '
+                              ||'('||rEmp.SALARY||')');
+        
+        -- 4. Actualización Posicional: Aplica el aumento salarial al 10% (SALARY * 1.1).
+        -- WHERE CURRENT OF cEmp: Solo actualiza la fila exacta en la que está posicionado el cursor.
+        UPDATE EMPLOYEES SET SALARY = SALARY * 1.1
+        WHERE CURRENT OF cEmp;
+        
+        -- Sub-bloque anónimo para consultar y mostrar el nuevo salario.
+        DECLARE
+            -- Variable local para almacenar el salario recién actualizado.
+            vSalario EMPLOYEES.SALARY%TYPE;
+        BEGIN
+            -- 5. Consulta la tabla para obtener el nuevo valor del salario.
+            SELECT SALARY INTO vSalario
+            FROM EMPLOYEES
+            WHERE EMPLOYEE_ID = rEmp.EMPLOYEE_ID;
+            
+            DBMS_OUTPUT.PUT_LINE('Salario modificado a: ' || vSalario);
+        END; -- Fin del sub-bloque.
+        
+        -- 6. Avanza al siguiente registro del cursor.
+        FETCH cEmp INTO rEmp;
+        
+    END LOOP; -- Fin del bucle WHILE.
+    
+    -- 7. Cierre del cursor (libera los recursos y los bloqueos impuestos por FOR UPDATE).
+    CLOSE cEmp;
+    
+    -- Nota: Al final de este bloque, las actualizaciones permanecen pendientes. Se requiere
+    -- un COMMIT o ROLLBACK explícito después del bloque BEGIN/END para finalizar la transacción.
+END;
+/
