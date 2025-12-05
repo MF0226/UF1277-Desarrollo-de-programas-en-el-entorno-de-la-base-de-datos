@@ -1,0 +1,43 @@
+SET SERVEROUTPUT ON
+
+ECLARE
+   cIdentificadorLimite INTEGER := 50;
+   -- Cursor para el tratamiento de departamentos
+   CURSOR cDep (pLimite INTEGER) IS
+      SELECT *
+      FROM DEPARTMENTS
+      WHERE DEPARTMENT_ID<pLimite
+      ORDER BY DEPARTMENT_ID;
+   -- Registro con la misma estructura que la tabla
+   rDep DEPARTMENTS%ROWTYPE;
+BEGIN
+   OPEN cDep (cIdentificadorLimite);
+   FETCH cDep INTO rDep;
+   <<Departamentos>>
+   WHILE cDep%FOUND LOOP
+      DBMS_OUTPUT.PUT_LINE ('Departamento :'||rDep.DEPARTMENT_ID
+                          ||' '||rDep.DEPARTMENT_NAME);
+      -- Procesa los empleados que trabajan en el departamento
+      <<Empleados>>
+      DECLARE
+         CURSOR cEmp (pDepartamento EMPLOYEES.DEPARTMENT_ID%TYPE) IS
+            SELECT FIRST_NAME, LAST_NAME
+            FROM EMPLOYEES
+            WHERE DEPARTMENT_ID=pDepartamento
+            ORDER BY LAST_NAME;
+         -- Registro con la misma estructura que el cursor
+         rEmp cEmp%ROWTYPE;
+      BEGIN
+         OPEN cEmp (rDep.DEPARTMENT_ID);
+         FETCH cEmp INTO rEmp;
+         WHILE cEmp%FOUND LOOP
+            DBMS_OUTPUT.PUT_LINE (CHR(9)||rEmp.FIRST_NAME
+                                   ||' '||rEmp.LAST_NAME);
+            FETCH cEmp INTO rEmp;
+         END LOOP;
+         CLOSE cEmp;
+      END Empleados;
+      FETCH cDep INTO rDep;
+   END LOOP Departamentos;
+   CLOSE cDep;
+END;
