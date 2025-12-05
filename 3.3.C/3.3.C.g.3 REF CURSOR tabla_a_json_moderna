@@ -1,0 +1,278 @@
+-- ============================================================================
+-- PROCEDIMIENTO: tabla_a_json_moderna
+-- ============================================================================
+-- DESCRIPCIÓN: Convierte cualquier tabla a formato JSON usando funciones nativas
+-- ENFOQUE: Técnica MODERNA con JSON_OBJECT + JSON_ARRAYAGG + EXECUTE IMMEDIATE
+-- VENTAJAS vs DBMS_SQL: Más simple, rápido, respeta tipos JSON nativos
+-- ============================================================================
+CREATE OR REPLACE PROCEDURE tabla_a_json_moderna (
+    p_tabla IN VARCHAR2  -- Parámetro de entrada: nombre de la tabla a convertir a JSON
+)
+AS
+    -- ========================================================================
+    -- DECLARACIÓN DE VARIABLES (Menos variables que el enfoque DBMS_SQL)
+    -- ========================================================================
+    v_columnas_json  CLOB;           -- Almacena la lista de columnas con formato KEY-VALUE para JSON_OBJECT
+                                     -- CLOB en lugar de VARCHAR2 para soportar tablas con muchas columnas
+    
+    v_sql            CLOB;           -- Almacena la consulta SQL dinámica completa
+                                     -- CLOB permite consultas muy largas sin límite de 32K
+    
+    v_json_out       CLOB;           -- Almacena el resultado JSON final (puede ser muy grande)
+                                     -- NO HAY LÍMITE: Puede manejar tablas con millones de filas
+    
+    v_tabla_segura   VARCHAR2(128);  -- Nombre de tabla validado para prevenir inyección SQL
+                                     -- 128 caracteres es el máximo para identificadores en Oracle
+    
+    v_col_count      NUMBER;         -- Contador de columnas (verifica existencia de tabla)
+                                     -- Doble propósito: validación y construcción
+BEGIN
+    -- ========================================================================
+    -- 1. SEGURIDAD: Validación del nombre de tabla contra inyección SQL
+    -- ========================================================================
+    -- DBMS_ASSERT.SIMPLE_SQL_NAME valida que el nombre sea un identificador válido
+    -- y no contenga caracteres maliciosos que pudieran causar SQL injection
+    -- 
+    -- EJEMPLOS de qué previene:
+    -- ✓ Acepta: 'EMPLOYEES', 'REGIONS', 'MY_TABLE'
+    -- ✗ Rechaza: 'EMPLOYEES; DROP TABLE USERS;--' (SQL injection)
+    -- ✗ Rechaza: 'TAB$LE' (caracteres no válidos)
+    -- ✗ Rechaza: '../../etc/passwd' (path traversal)
+    v_tabla_segura := DBMS_ASSERT.SIMPLE_SQL_NAME(UPPER(p_tabla));
+    
+    -- ========================================================================
+    -- 2. CONSTRUCCIÓN DINÁMICA: Obtener columnas y generar formato JSON_OBJECT
+    -- ========================================================================
+    -- Esta consulta hace dos cosas simultáneamente en UNA SOLA operación:
+    -- a) Cuenta las columnas (para validar que la tabla existe y tiene datos)
+    -- b) Construye la sintaxis KEY-VALUE para cada columna
+    --
+    -- VENTAJA sobre DBMS_SQL: No necesitamos OPEN_CURSOR, PARSE, DESCRIBE_COLUMNS
+    -- Todo se hace en una consulta al diccionario de datos
+    SELECT COUNT(*),
+           LISTAGG(
+               -- ============================================================
+               -- SINTAXIS JSON_OBJECT: KEY 'nombre' VALUE columna
+               -- ============================================================
+               -- Genera dinámicamente: KEY 'REGION_ID' VALUE REGION_ID
+               -- Las comillas triples ''' son necesarias para escapar comillas simples
+               -- dentro de la cadena SQL dinámica
+               --
+               -- EXPLICACIÓN del escape de comillas:
+               -- 'KEY '''    -> Produce: KEY '
+               -- column_name -> Produce: REGION_ID
+               -- ''' VALUE ' -> Produce: ' VALUE 
+               -- Resultado final: KEY 'REGION_ID' VALUE REGION_ID
+               'KEY ''' || column_name || ''' VALUE ' || column_name,
+               ', '  -- Separador entre pares KEY-VALUE (coma + espacio)
+           ) WITHIN GROUP (ORDER BY column_id)  -- Ordena por posición original de columnas
+    INTO v_col_count, v_columnas_json
+    FROM USER_TAB_COLUMNS  -- Diccionario de datos: columnas de tablas del usuario actual
+    WHERE TABLE_NAME = v_tabla_segura;
+    
+    -- EJEMPLO de v_columnas_json generado para la tabla REGIONS:
+    -- KEY 'REGION_ID' VALUE REGION_ID, KEY 'REGION_NAME' VALUE REGION_NAME
+    
+    -- ========================================================================
+    -- 3. VALIDACIÓN: Verificar que la tabla existe y tiene columnas
+    -- ========================================================================
+    IF v_col_count = 0 THEN
+        -- Si no hay columnas, la tabla no existe o no es accesible
+        -- Código de error -20002 (rango reservado para errores de usuario)
+        RAISE_APPLICATION_ERROR(-20002, 
+            'La tabla "' || p_tabla || '" no existe o no tiene columnas accesibles.');
+    END IF;
+    
+    -- ========================================================================
+    -- 4. GENERACIÓN SQL DINÁMICA: Construir consulta con funciones JSON nativas
+    -- ========================================================================
+    -- VENTAJA CLAVE: El motor SQL de Oracle hace TODO el trabajo pesado
+    -- No necesitamos bucles PL/SQL ni concatenación manual
+    --
+    -- ESTRUCTURA de la consulta generada:
+    -- SELECT JSON_ARRAYAGG(              <- Agrupa objetos en array [...]
+    --     JSON_OBJECT(                   <- Convierte cada fila en objeto {...}
+    --         KEY 'col1' VALUE col1,     <- Respeta tipos nativos
+    --         KEY 'col2' VALUE col2      <- NUMBER queda como número, no "número"
+    --         ABSENT ON NULL             <- Omite propiedades NULL
+    --     )
+    --     RETURNING CLOB                 <- Retorna CLOB (sin límite de tamaño)
+    -- )
+    -- FROM tabla
+    --
+    -- JSON_OBJECT: Función SQL nativa introducida en Oracle 12c
+    --   - Convierte cada fila en un objeto JSON
+    --   - Respeta tipos de datos nativos:
+    --     * NUMBER -> número JSON (sin comillas): 123
+    --     * VARCHAR2 -> string JSON (con comillas): "texto"
+    --     * DATE -> string ISO 8601: "2025-12-05T10:30:00"
+    --     * NULL -> null JSON (palabra clave, sin comillas)
+    --   - Maneja automáticamente el escape de caracteres especiales
+    --
+    -- JSON_ARRAYAGG: Función SQL nativa de agregación
+    --   - Agrupa múltiples objetos JSON en un array
+    --   - Genera: [obj1, obj2, obj3, ...]
+    --   - Mucho más eficiente que concatenar strings en PL/SQL
+    --
+    -- ABSENT ON NULL: Cláusula opcional
+    --   - Omite propiedades con valor NULL del JSON resultante
+    --   - Alternativa: NULL ON NULL (incluye "propiedad": null)
+    --   - Reduce el tamaño del JSON eliminando datos vacíos
+    --
+    -- RETURNING CLOB: Especifica el tipo de retorno
+    --   - Necesario porque el resultado puede exceder 4000 caracteres (límite VARCHAR2)
+    --   - Sin esto, Oracle truncaría el resultado
+    --   - CLOB soporta hasta 128 TB de datos
+    v_sql := '
+        SELECT JSON_ARRAYAGG(
+                   JSON_OBJECT(' || v_columnas_json || ' ABSENT ON NULL)
+                   RETURNING CLOB
+               )
+        FROM ' || v_tabla_segura;
+    
+    -- EJEMPLO de v_sql generado completo para la tabla REGIONS:
+    -- SELECT JSON_ARRAYAGG(
+    --     JSON_OBJECT(
+    --         KEY 'REGION_ID' VALUE REGION_ID, 
+    --         KEY 'REGION_NAME' VALUE REGION_NAME 
+    --         ABSENT ON NULL
+    --     )
+    --     RETURNING CLOB
+    -- )
+    -- FROM REGIONS
+    
+    -- ========================================================================
+    -- 5. EJECUCIÓN: Ejecutar SQL dinámico y capturar resultado
+    -- ========================================================================
+    -- EXECUTE IMMEDIATE: Método moderno de SQL dinámico en PL/SQL
+    --
+    -- VENTAJAS sobre DBMS_SQL:
+    -- ✓ Una sola línea de código vs múltiples llamadas (OPEN, PARSE, DEFINE, EXECUTE, FETCH, CLOSE)
+    -- ✓ Sintaxis más simple e intuitiva
+    -- ✓ Mejor rendimiento (optimizado internamente por Oracle)
+    -- ✓ Soporte directo de tipos PL/SQL (no necesita conversiones)
+    -- ✓ Menos propenso a errores de manejo de recursos
+    --
+    -- INTO v_json_out: Captura el resultado en una variable CLOB
+    -- Todo el procesamiento se hace en SQL (mucho más rápido que PL/SQL)
+    EXECUTE IMMEDIATE v_sql INTO v_json_out;
+    
+    -- ========================================================================
+    -- 6. SALIDA: Imprimir JSON en fragmentos (DBMS_OUTPUT tiene límite de 32K)
+    -- ========================================================================
+    -- DBMS_OUTPUT.PUT_LINE tiene una limitación: 32.767 caracteres por línea
+    -- Para resultados grandes, debemos dividir el CLOB en fragmentos
+    IF v_json_out IS NOT NULL THEN
+        -- BUCLE de fragmentación:
+        -- - DBMS_LOB.getlength: Obtiene el tamaño total del CLOB
+        -- - División por 30.000: Dejamos margen de seguridad (2.767 caracteres)
+        -- - TRUNC: Redondea hacia abajo para calcular número de fragmentos
+        --
+        -- EJEMPLO: Si el CLOB tiene 95.000 caracteres:
+        --   95.000 / 30.000 = 3.16 -> TRUNC = 3
+        --   Iteraciones: i=0, 1, 2, 3 (4 fragmentos)
+        FOR i IN 0 .. TRUNC(DBMS_LOB.getlength(v_json_out) / 30000)
+        LOOP
+            -- DBMS_LOB.SUBSTR: Extrae una porción del CLOB
+            -- Parámetros: (clob, cantidad_caracteres, posición_inicio)
+            --
+            -- CÁLCULO de posición_inicio: i*30000 + 1
+            --   i=0: posición 1 (caracteres 1-30000)
+            --   i=1: posición 30001 (caracteres 30001-60000)
+            --   i=2: posición 60001 (caracteres 60001-90000)
+            --   i=3: posición 90001 (caracteres 90001-95000)
+            DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(v_json_out, 30000, i*30000 + 1));
+        END LOOP;
+    ELSE
+        -- Si la tabla está vacía, JSON_ARRAYAGG retorna NULL
+        -- Devolvemos un array JSON vacío válido para consistencia
+        DBMS_OUTPUT.PUT_LINE('[]');
+    END IF;
+    
+-- ============================================================================
+-- 7. MANEJO DE ERRORES: Capturar y reportar cualquier excepción
+-- ============================================================================
+EXCEPTION
+    WHEN OTHERS THEN
+        -- SQLERRM: Función que retorna el mensaje de error del último error
+        -- Ejemplos de errores capturados:
+        --   - ORA-00942: table or view does not exist
+        --   - ORA-00904: invalid identifier
+        --   - ORA-01476: divisor is equal to zero
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        
+        -- RAISE: Re-lanza la excepción para que el llamador también la vea
+        -- Importante para no ocultar errores en procedimientos llamadores
+        RAISE;
+END tabla_a_json_moderna;
+/
+
+-- ============================================================================
+-- COMPARACIÓN DETALLADA: ENFOQUE CLÁSICO vs MODERNO
+-- ============================================================================
+--
+-- ┌─────────────────────┬──────────────────────────┬─────────────────────────┐
+-- │ CARACTERÍSTICA      │ DBMS_SQL (Clásico)       │ JSON_OBJECT (Moderno)   │
+-- ├─────────────────────┼──────────────────────────┼─────────────────────────┤
+-- │ Líneas de código    │ ~80 líneas               │ ~50 líneas              │
+-- │ Complejidad         │ Alta (múltiples pasos)   │ Baja (declarativo)      │
+-- │ Rendimiento         │ Más lento (bucles PL/SQL)│ Rápido (procesamiento SQL)│
+-- │ Tipos JSON          │ Todo como string "123"   │ Nativos: 123            │
+-- │ Fechas              │ TO_CHAR manual           │ ISO 8601 automático     │
+-- │ Escape caracteres   │ Manual (REPLACE)         │ Automático              │
+-- │ Límite por columna  │ 4000 caracteres          │ Sin límite (usa CLOB)   │
+-- │ Resultado           │ Objetos separados        │ Array JSON válido       │
+-- │ Manejo de recursos  │ Manual (CLOSE_CURSOR)    │ Automático              │
+-- │ Introspección       │ ✓ Metadatos detallados   │ ✗ Solo nombres columnas │
+-- │ Casos de uso        │ Análisis de metadatos    │ Generación de JSON      │
+-- └─────────────────────┴──────────────────────────┴─────────────────────────┘
+--
+-- ============================================================================
+-- CUÁNDO USAR CADA ENFOQUE:
+-- ============================================================================
+--
+-- USA JSON_OBJECT + EXECUTE IMMEDIATE (este procedimiento) cuando:
+-- ✓ Necesitas generar JSON válido estándar
+-- ✓ Quieres respetar tipos de datos nativos
+-- ✓ Buscas simplicidad y mantenibilidad
+-- ✓ Rendimiento es importante
+-- ✓ Trabajas con Oracle 12c o superior
+--
+-- USA DBMS_SQL (tabla_a_json) cuando:
+-- ✓ Necesitas introspección detallada (tipos, precisión, escala)
+-- ✓ Trabajas con Oracle 11g o inferior (sin JSON_OBJECT)
+-- ✓ Necesitas manipular metadatos de columnas dinámicamente
+-- ✓ Requieres control granular sobre cada columna
+-- ✓ Implementas herramientas de administración de BD
+--
+-- ============================================================================
+-- EJEMPLO DE USO Y SALIDA:
+-- ============================================================================
+SET SERVEROUTPUT ON SIZE UNLIMITED;
+EXECUTE tabla_a_json_moderna('REGIONS');
+-- 
+-- Resultado esperado (JSON válido completo):
+-- [
+--   {"REGION_ID":1,"REGION_NAME":"Europe"},
+--   {"REGION_ID":2,"REGION_NAME":"Americas"},
+--   {"REGION_ID":3,"REGION_NAME":"Asia"},
+--   {"REGION_ID":4,"REGION_NAME":"Middle East and Africa"}
+-- ]
+--
+-- NOTA: Los números aparecen SIN comillas (1 en lugar de "1")
+--       Esto es JSON válido y permite operaciones matemáticas en JavaScript
+--
+-- ============================================================================
+-- DIFERENCIAS EN LA SALIDA:
+-- ============================================================================
+--
+-- ENFOQUE CLÁSICO (tabla_a_json):
+-- {"REGION_ID": "1", "REGION_NAME": "Europe"}
+-- {"REGION_ID": "2", "REGION_NAME": "Americas"}
+-- (Objetos separados, números como strings, NO es JSON válido)
+--
+-- ENFOQUE MODERNO (tabla_a_json_moderna):
+-- [{"REGION_ID":1,"REGION_NAME":"Europe"},{"REGION_ID":2,"REGION_NAME":"Americas"}]
+-- (Array JSON válido, números como números, listo para consumir en APIs)
+--
+-- ============================================================================
