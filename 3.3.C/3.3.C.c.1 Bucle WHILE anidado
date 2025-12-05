@@ -1,43 +1,81 @@
 SET SERVEROUTPUT ON
 
-ECLARE
-   cIdentificadorLimite INTEGER := 50;
-   -- Cursor para el tratamiento de departamentos
-   CURSOR cDep (pLimite INTEGER) IS
-      SELECT *
-      FROM DEPARTMENTS
-      WHERE DEPARTMENT_ID<pLimite
-      ORDER BY DEPARTMENT_ID;
-   -- Registro con la misma estructura que la tabla
-   rDep DEPARTMENTS%ROWTYPE;
+DECLARE
+    -- Variable para establecer el límite del ID de departamento que se procesará.
+    cIdentificadorLimite INTEGER := 50;
+
+    -- Cursor principal (externo) para el tratamiento de departamentos.
+    -- Es parametrizado (pLimite) para reutilizar la variable cIdentificadorLimite.
+    CURSOR cDep (pLimite INTEGER) IS
+        SELECT *
+        FROM DEPARTMENTS
+        -- Filtra solo los departamentos con un ID menor al límite pasado.
+        WHERE DEPARTMENT_ID < pLimite
+        ORDER BY DEPARTMENT_ID;
+
+    -- Registro que hereda la estructura completa de la tabla DEPARTMENTS.
+    rDep DEPARTMENTS%ROWTYPE;
+
 BEGIN
-   OPEN cDep (cIdentificadorLimite);
-   FETCH cDep INTO rDep;
-   <<Departamentos>>
-   WHILE cDep%FOUND LOOP
-      DBMS_OUTPUT.PUT_LINE ('Departamento :'||rDep.DEPARTMENT_ID
-                          ||' '||rDep.DEPARTMENT_NAME);
-      -- Procesa los empleados que trabajan en el departamento
-      <<Empleados>>
-      DECLARE
-         CURSOR cEmp (pDepartamento EMPLOYEES.DEPARTMENT_ID%TYPE) IS
-            SELECT FIRST_NAME, LAST_NAME
-            FROM EMPLOYEES
-            WHERE DEPARTMENT_ID=pDepartamento
-            ORDER BY LAST_NAME;
-         -- Registro con la misma estructura que el cursor
-         rEmp cEmp%ROWTYPE;
-      BEGIN
-         OPEN cEmp (rDep.DEPARTMENT_ID);
-         FETCH cEmp INTO rEmp;
-         WHILE cEmp%FOUND LOOP
-            DBMS_OUTPUT.PUT_LINE (CHR(9)||rEmp.FIRST_NAME
-                                   ||' '||rEmp.LAST_NAME);
+    -- 1. Apertura del cursor principal. Se le pasa el valor del límite.
+    OPEN cDep (cIdentificadorLimite);
+    
+    -- 2. Primera extracción (fetch) antes del bucle para inicializar el registro y la condición.
+    FETCH cDep INTO rDep;
+
+    -- Etiqueta del bucle para mejor legibilidad.
+    <<Departamentos>>
+    -- Bucle WHILE que continúa mientras el FETCH anterior haya encontrado una fila (%FOUND).
+    WHILE cDep%FOUND LOOP
+        -- Muestra el ID y el nombre del departamento actual.
+        DBMS_OUTPUT.PUT_LINE ('Departamento :'||rDep.DEPARTMENT_ID
+                              ||' '||rDep.DEPARTMENT_NAME);
+        
+        -- Comienza el Bloque Anidado (Sub-bloque anónimo DECLARE/BEGIN/END).
+        -- Este bloque se ejecuta una vez por cada departamento.
+        <<Empleados>>
+        DECLARE
+            -- Cursor secundario (interno) para seleccionar empleados.
+            -- Es parametrizado (pDepartamento) para filtrar por el departamento actual.
+            CURSOR cEmp (pDepartamento EMPLOYEES.DEPARTMENT_ID%TYPE) IS
+                SELECT FIRST_NAME, LAST_NAME
+                FROM EMPLOYEES
+                -- Filtra solo los empleados que pertenecen al ID de departamento actual.
+                WHERE DEPARTMENT_ID = pDepartamento
+                ORDER BY LAST_NAME;
+            
+            -- Registro que hereda la estructura del cursor cEmp (solo dos columnas).
+            rEmp cEmp%ROWTYPE;
+        
+        BEGIN
+            -- 3. Apertura del cursor de empleados, pasándole el ID del departamento actual.
+            OPEN cEmp (rDep.DEPARTMENT_ID);
+            
+            -- 4. Primera extracción (fetch) de empleados del departamento actual.
             FETCH cEmp INTO rEmp;
-         END LOOP;
-         CLOSE cEmp;
-      END Empleados;
-      FETCH cDep INTO rDep;
-   END LOOP Departamentos;
-   CLOSE cDep;
+            
+            -- Bucle WHILE interno para recorrer a todos los empleados de ese departamento.
+            WHILE cEmp%FOUND LOOP
+                -- Muestra el nombre y apellido del empleado. CHR(9) es un tabulador.
+                DBMS_OUTPUT.PUT_LINE (CHR(9)||rEmp.FIRST_NAME
+                                      ||' '||rEmp.LAST_NAME);
+                
+                -- Siguiente extracción (fetch) del cursor de empleados.
+                FETCH cEmp INTO rEmp;
+            END LOOP;
+            
+            -- 5. Cierre del cursor de empleados. Es esencial liberar el recurso.
+            CLOSE cEmp;
+            
+        END Empleados; -- Fin del bloque anidado de Empleados.
+
+        -- Siguiente extracción (fetch) del cursor de departamentos.
+        FETCH cDep INTO rDep;
+        
+    END LOOP Departamentos; -- Fin del bucle principal de Departamentos.
+
+    -- 6. Cierre del cursor principal al terminar todo el procesamiento.
+    CLOSE cDep;
+    
 END;
+/
