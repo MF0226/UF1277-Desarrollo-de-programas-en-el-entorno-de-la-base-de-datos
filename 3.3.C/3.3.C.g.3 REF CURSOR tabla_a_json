@@ -1,0 +1,221 @@
+-- ============================================================================
+-- PROCEDIMIENTO: tabla_a_json
+-- ============================================================================
+-- DESCRIPCIÓN: Convierte cualquier tabla a formato JSON usando DBMS_SQL
+-- ENFOQUE: Técnica CLÁSICA con introspección de metadatos (DBMS_SQL)
+-- ALTERNATIVA MODERNA: Ver tabla_a_json_moderna que usa JSON_OBJECT/JSON_ARRAYAGG
+-- ============================================================================
+CREATE OR REPLACE PROCEDURE tabla_a_json (
+    p_tabla IN VARCHAR2  -- Parámetro: nombre de la tabla a convertir
+)
+AS
+    -- ========================================================================
+    -- DECLARACIÓN DE VARIABLES
+    -- ========================================================================
+    v_sql           VARCHAR2(32767);  -- Almacena la consulta SELECT dinámica
+    v_cursor        INTEGER;          -- Handle del cursor DBMS_SQL (identificador numérico)
+    v_col_count     INTEGER;          -- Número total de columnas de la tabla
+    v_ret           INTEGER;          -- Código de retorno de DBMS_SQL.EXECUTE
+    
+    -- Estructura de metadatos: DBMS_SQL.DESC_TAB es una tabla PL/SQL indexada
+    -- que almacena información sobre cada columna (nombre, tipo, longitud, etc.)
+    desc_tab        DBMS_SQL.DESC_TAB;
+    
+    v_value         VARCHAR2(4000);   -- Variable temporal para cada valor de columna
+                                      -- LIMITACIÓN: Trunca valores mayores a 4000 caracteres
+    
+    v_json          CLOB;             -- Almacena el objeto JSON de cada fila
+BEGIN
+    -- ========================================================================
+    -- NOTA DIDÁCTICA SOBRE EL ENFOQUE
+    -- ========================================================================
+    -- Este procedimiento utiliza DBMS_SQL para la introspección (DESCRIBE_COLUMNS).
+    -- Esta técnica es útil para el manejo avanzado de metadatos,
+    -- pero para la generación de JSON puro, la alternativa moderna son las funciones SQL nativas
+    -- (JSON_OBJECT y JSON_ARRAYAGG) junto con EXECUTE IMMEDIATE, que son más rápidas y simples.
+
+    -- ========================================================================
+    -- 1. VALIDACIÓN: Verificar que la tabla existe
+    -- ========================================================================
+    DECLARE
+        v_dummy VARCHAR2(1);  -- Variable auxiliar (solo necesitamos saber si existe)
+    BEGIN
+        -- Consultar el diccionario de datos USER_TABLES
+        -- Si la tabla no existe, se lanza NO_DATA_FOUND
+        SELECT 'X'
+        INTO v_dummy
+        FROM USER_TABLES
+        WHERE TABLE_NAME = UPPER(p_tabla);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            -- Lanzar error personalizado con código -20001
+            RAISE_APPLICATION_ERROR(
+                -20001,
+                'La tabla "' || p_tabla || '" no existe en el esquema.'
+            );
+    END;
+
+    -- ========================================================================
+    -- 2. CONSTRUCCIÓN SQL DINÁMICA: Generar SELECT con todas las columnas
+    -- ========================================================================
+    -- LISTAGG concatena todos los nombres de columnas separados por comas
+    -- ORDER BY column_id asegura el orden original de las columnas
+    SELECT LISTAGG(column_name, ', ') WITHIN GROUP (ORDER BY column_id)
+    INTO v_sql
+    FROM USER_TAB_COLUMNS
+    WHERE TABLE_NAME = UPPER(p_tabla);
+
+    -- Construir la consulta completa: SELECT col1, col2, ... FROM tabla
+    -- DBMS_ASSERT.SIMPLE_SQL_NAME previene inyección SQL validando el nombre
+    v_sql := 'SELECT ' || v_sql ||
+             ' FROM ' || DBMS_ASSERT.SIMPLE_SQL_NAME(UPPER(p_tabla));
+
+    -- ========================================================================
+    -- 3. DBMS_SQL: Abrir y analizar el cursor dinámico
+    -- ========================================================================
+    -- OPEN_CURSOR: Crea un nuevo cursor y devuelve su handle (identificador)
+    v_cursor := DBMS_SQL.OPEN_CURSOR;
+    
+    -- PARSE: Analiza la consulta SQL sin ejecutarla todavía
+    -- DBMS_SQL.NATIVE usa el modo nativo de la base de datos
+    DBMS_SQL.PARSE(v_cursor, v_sql, DBMS_SQL.NATIVE);
+
+    -- ========================================================================
+    -- 4. INTROSPECCIÓN: Obtener metadatos de las columnas
+    -- ========================================================================
+    -- DESCRIBE_COLUMNS es una característica ÚNICA de DBMS_SQL
+    -- Llena desc_tab con información detallada de cada columna:
+    -- - col_name: nombre de la columna
+    -- - col_type: tipo de dato (NUMBER=2, VARCHAR2=1, DATE=12, etc.)
+    -- - col_max_len: longitud máxima
+    -- - col_precision, col_scale: para números
+    DBMS_SQL.DESCRIBE_COLUMNS(v_cursor, v_col_count, desc_tab);
+
+    -- ========================================================================
+    -- 5. DEFINICIÓN DE COLUMNAS: Asignar variables PL/SQL para cada columna
+    -- ========================================================================
+    FOR i IN 1 .. v_col_count LOOP
+        -- DEFINE_COLUMN: Asocia la columna 'i' del cursor con la variable v_value
+        -- Parámetros: (cursor, posición_columna, variable_destino, longitud_máxima)
+        -- IMPORTANTE: Todas las columnas se tratan como VARCHAR2(4000)
+        -- Esto simplifica el código pero puede truncar datos o perder precisión en tipos numéricos
+        DBMS_SQL.DEFINE_COLUMN(v_cursor, i, v_value, 4000);
+    END LOOP;
+
+    -- ========================================================================
+    -- 6. EJECUCIÓN: Ejecutar la consulta SELECT
+    -- ========================================================================
+    -- EXECUTE: Ejecuta la consulta parseada
+    -- Retorna el número de filas procesadas (para DML) o 0 (para SELECT)
+    v_ret := DBMS_SQL.EXECUTE(v_cursor);
+
+    -- ========================================================================
+    -- 7. FETCH: Recuperar filas y generar JSON manualmente
+    -- ========================================================================
+    -- FETCH_ROWS: Recupera la siguiente fila del cursor
+    -- Retorna 1 si hay fila, 0 si no hay más filas
+    WHILE DBMS_SQL.FETCH_ROWS(v_cursor) > 0 LOOP
+        v_json := '{'; -- Inicio del objeto JSON para esta fila
+
+        -- Iterar sobre todas las columnas de la fila actual
+        FOR i IN 1 .. v_col_count LOOP
+            -- COLUMN_VALUE: Extrae el valor de la columna 'i' y lo almacena en v_value
+            DBMS_SQL.COLUMN_VALUE(v_cursor, i, v_value);
+
+            -- ================================================================
+            -- GENERACIÓN MANUAL DE JSON (Enfoque Clásico)
+            -- ================================================================
+            -- LIMITACIONES de este enfoque:
+            -- 1. Todos los valores se tratan como strings (entre comillas)
+            -- 2. Los números aparecen como "123" en lugar de 123
+            -- 3. Las fechas se convierten al formato por defecto de Oracle
+            -- 4. Requiere escape manual de caracteres especiales
+            -- 5. No maneja tipos complejos (CLOB, BLOB, objetos)
+            
+            v_json := v_json ||
+                      -- Nombre de la propiedad JSON entre comillas
+                      '"' || desc_tab(i).col_name || '": ' ||
+                      -- Valor: null si es NULL, o el valor entre comillas
+                      CASE WHEN v_value IS NULL THEN 'null'
+                           -- REPLACE escapa las comillas dobles dentro del valor
+                           ELSE '"' || REPLACE(v_value, '"', '\"') || '"'
+                      END;
+
+            -- Agregar coma separadora excepto después de la última columna
+            IF i < v_col_count THEN
+                v_json := v_json || ', ';
+            END IF;
+        END LOOP;
+
+        v_json := v_json || '}';  -- Cerrar el objeto JSON
+
+        -- Imprimir el objeto JSON de esta fila
+        -- NOTA: Cada fila se imprime por separado (no es un array JSON válido)
+        DBMS_OUTPUT.PUT_LINE(v_json);
+    END LOOP;
+
+    -- ========================================================================
+    -- 8. LIMPIEZA: Cerrar el cursor
+    -- ========================================================================
+    -- CLOSE_CURSOR: Libera los recursos del cursor
+    -- CRÍTICO: Siempre debe cerrarse para evitar fugas de memoria
+    DBMS_SQL.CLOSE_CURSOR(v_cursor);
+
+-- ============================================================================
+-- 9. MANEJO DE EXCEPCIONES
+-- ============================================================================
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Gestión de errores: Asegurar el cierre del cursor incluso si hay error
+        -- IS_OPEN verifica si el cursor todavía está abierto
+        IF DBMS_SQL.IS_OPEN(v_cursor) THEN
+            DBMS_SQL.CLOSE_CURSOR(v_cursor);
+        END IF;
+        -- Re-lanzar la excepción para que el llamador la vea
+        RAISE;
+END tabla_a_json;
+/
+
+-- ============================================================================
+-- COMPARACIÓN: DBMS_SQL vs EXECUTE IMMEDIATE + JSON_OBJECT
+-- ============================================================================
+-- 
+-- VENTAJAS de DBMS_SQL (este enfoque):
+-- ✓ Introspección completa de metadatos (tipos, longitudes, precisión)
+-- ✓ Control granular sobre cada columna
+-- ✓ Útil para casos complejos (cursores REF CURSOR, DDL dinámico)
+-- 
+-- DESVENTAJAS de DBMS_SQL:
+-- ✗ Código más complejo y verboso (requiere múltiples pasos)
+-- ✗ Menor rendimiento que EXECUTE IMMEDIATE
+-- ✗ Generación manual de JSON propensa a errores
+-- ✗ No respeta tipos nativos JSON (todo se convierte a string)
+-- ✗ Limitación de 4000 caracteres por columna
+-- ✗ Resultado no es un array JSON válido (cada fila separada)
+-- 
+-- VENTAJAS de JSON_OBJECT + EXECUTE IMMEDIATE (enfoque moderno):
+-- ✓ Código mucho más simple y legible
+-- ✓ Mayor rendimiento (optimizado por el motor SQL)
+-- ✓ Respeta tipos JSON nativos (números, fechas, booleanos)
+-- ✓ Maneja automáticamente el escape de caracteres
+-- ✓ Genera JSON válido (array con objetos)
+-- ✓ Soporta CLOB sin limitaciones
+-- 
+-- RECOMENDACIÓN: Usar tabla_a_json_moderna con JSON_OBJECT/JSON_ARRAYAGG
+-- salvo que se necesite introspección detallada de metadatos.
+-- ============================================================================
+
+-- ============================================================================
+-- EJEMPLO DE USO:
+-- ============================================================================
+SET SERVEROUTPUT ON SIZE UNLIMITED;
+EXECUTE tabla_a_json('REGIONS');
+-- 
+-- Salida esperada (cada línea es un objeto JSON separado):
+-- {"REGION_ID": "1", "REGION_NAME": "Europe"}
+-- {"REGION_ID": "2", "REGION_NAME": "Americas"}
+-- {"REGION_ID": "3", "REGION_NAME": "Asia"}
+-- 
+-- NOTA: No es un JSON válido completo, solo objetos individuales
+-- Para obtener un array JSON válido, usar tabla_a_json_moderna
+-- ============================================================================
