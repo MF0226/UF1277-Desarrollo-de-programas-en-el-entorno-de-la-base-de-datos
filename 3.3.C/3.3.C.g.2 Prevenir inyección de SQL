@@ -1,0 +1,30 @@
+CREATE OR REPLACE PROCEDURE borrarFilas (
+    pNombreTabla IN VARCHAR2,
+    pCondicion   IN VARCHAR2 DEFAULT NULL
+)
+AS
+    -- Declaración e inicialización de la variable de tabla validada.
+    -- Validación estricta del nombre de tabla
+    vTabla VARCHAR2(200) :=
+        -- Función de DBMS_ASSERT que verifica que el parámetro sea un nombre de objeto SQL válido.
+        -- Esto previene la inyección de SQL en el nombre de la tabla.
+        DBMS_ASSERT.SQL_OBJECT_NAME(pNombreTabla);
+
+    vClausulaWhere VARCHAR2(500);
+BEGIN
+    -- Comprueba si se ha pasado una condición.
+    IF pCondicion IS NULL THEN
+        vClausulaWhere := NULL; -- Si no hay condición, la cláusula WHERE está vacía.
+    ELSE
+        -- Si hay condición, se añade el prefijo ' WHERE ' y la condición recibida.
+        -- Opción moderna: validar la condición o usar whitelist
+        -- (el desarrollador es responsable aquí, ya que el contenido de WHERE se concatena)
+        vClausulaWhere := ' WHERE ' || pCondicion;
+    END IF;
+
+    -- Ejecuta la sentencia DELETE dinámica.
+    EXECUTE IMMEDIATE
+        -- Concatena 'DELETE FROM', el nombre de tabla validado (vTabla) y la cláusula WHERE.
+        'DELETE FROM ' || vTabla || vClausulaWhere;
+END;
+/
