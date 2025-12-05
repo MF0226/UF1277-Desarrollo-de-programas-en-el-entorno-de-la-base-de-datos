@@ -124,3 +124,55 @@ END tabla_a_json;
 
 -- Ejemplo de uso
 EXECUTE tabla_a_json('REGIONS');
+
+-- La versión anterior tiene caracter didáctico, ya que existen funciones de JSON que simplican el código
+CREATE OR REPLACE PROCEDURE tabla_a_json_moderna (
+    p_tabla IN VARCHAR2
+)
+AS
+    v_columnas_json VARCHAR2(32767);
+    v_sql           CLOB;
+    v_json_out      CLOB;
+    v_tabla_segura  VARCHAR2(128);
+BEGIN
+    -- 1. Seguridad y Validación:
+    -- Asegurar que el nombre de la tabla sea seguro contra inyección.
+    v_tabla_segura := DBMS_ASSERT.SIMPLE_SQL_NAME(UPPER(p_tabla));
+
+    -- 2. Construcción Dinámica de Claves JSON:
+    -- LISTAGG construye dinámicamente la lista de pares clave-valor (JSON_OBJECT)
+    -- usando las funciones nativas JSON de Oracle.
+    -- El resultado es una cadena como: '"COL1" VALUE COL1, "COL2" VALUE COL2, ...'
+    SELECT LISTAGG(
+               '"' || column_name || '" VALUE ' || column_name,
+               ', '
+           ) WITHIN GROUP (ORDER BY column_id)
+    INTO v_columnas_json
+    FROM USER_TAB_COLUMNS
+    WHERE TABLE_NAME = v_tabla_segura;
+
+    -- Si no hay columnas (tabla vacía o no existe), LISTAGG devuelve NULL.
+    IF v_columnas_json IS NULL THEN
+        RAISE_APPLICATION_ERROR(
+            -20001,
+            'La tabla "' || p_tabla || '" no existe o no tiene columnas.'
+        );
+    END IF;
+
+    -- 3. Construcción de la Sentencia SQL Final:
+    -- Se usa JSON_OBJECT para cada fila y JSON_ARRAYAGG para encapsular todas las filas.
+    v_sql := 'SELECT JSON_ARRAYAGG(
+                  JSON_OBJECT(' || v_columnas_json || ' ABSENT ON NULL)
+                  RETURNING CLOB
+              )
+              FROM ' || v_tabla_segura;
+
+    -- 4. Ejecución Dinámica y Recuperación del CLOB:
+    -- Se utiliza EXECUTE IMMEDIATE con INTO, ya que la consulta devuelve exactamente una fila (un CLOB).
+    EXECUTE IMMEDIATE v_sql INTO v_json_out;
+
+    -- 5. Salida del Resultado:
+    DBMS_OUTPUT.PUT_LINE(v_json_out);
+
+END tabla_a_json_moderna;
+/
