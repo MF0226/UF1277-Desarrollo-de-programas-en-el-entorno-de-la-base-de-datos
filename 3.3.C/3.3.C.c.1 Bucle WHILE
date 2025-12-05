@@ -1,26 +1,41 @@
 SET SERVEROUTPUT ON
 
 DECLARE
-   c_límite        CONSTANT NUMBER := 50;
-   CURSOR c_dep (p_limite NUMBER) IS
-      SELECT department_id, department_name
-      FROM departments
-      WHERE department_id < p_limite
-      ORDER BY department_id;
+    -- Declara una constante numérica para establecer el límite del ID de departamento.
+    c_límite CONSTANT NUMBER := 50;
 
-   r_dep c_dep%ROWTYPE;
+    -- Define un cursor explícito y parametrizado (c_dep) para seleccionar departamentos.
+    CURSOR c_dep (p_limite NUMBER) IS
+        SELECT department_id, department_name
+        FROM departments
+        -- Filtra los departamentos con un ID menor al límite proporcionado por el parámetro p_limite.
+        WHERE department_id < p_limite
+        ORDER BY department_id;
+
+    -- Declara una variable de registro (r_dep) cuya estructura (columnas y tipos) 
+    -- coincide exactamente con el resultado del cursor c_dep (%ROWTYPE).
+    r_dep c_dep%ROWTYPE;
+
 BEGIN
-   OPEN c_dep(c_límite);
-   FETCH c_dep INTO r_dep;
+    -- Abre el cursor c_dep, ejecutando la consulta SQL y pasando el valor de la constante c_límite.
+    OPEN c_dep(c_límite);
+    
+    -- Realiza la primera extracción (FETCH) de datos del cursor a la variable de registro r_dep.
+    FETCH c_dep INTO r_dep;
 
-   WHILE c_dep%FOUND LOOP
-      DBMS_OUTPUT.PUT_LINE('Departamento: ' ||
-                           r_dep.department_id || ' ' ||
-                           r_dep.department_name);
+    -- Inicia el bucle WHILE. Continuará iterando mientras el FETCH anterior haya encontrado una fila (c_dep%FOUND es TRUE).
+    WHILE c_dep%FOUND LOOP
+        -- Muestra los datos del departamento actual utilizando la salida de DBMS_OUTPUT.
+        DBMS_OUTPUT.PUT_LINE('Departamento: ' ||
+                             r_dep.department_id || ' ' ||
+                             r_dep.department_name);
 
-      FETCH c_dep INTO r_dep;
-   END LOOP;
+        -- Realiza la siguiente extracción (FETCH) de datos. Esto es crucial para avanzar a la siguiente fila 
+        -- y actualizar la condición del bucle WHILE.
+        FETCH c_dep INTO r_dep;
+    END LOOP;
 
-   CLOSE c_dep;
+    -- Cierra el cursor c_dep para liberar los recursos del sistema asociados a la consulta.
+    CLOSE c_dep;
 END;
 /
