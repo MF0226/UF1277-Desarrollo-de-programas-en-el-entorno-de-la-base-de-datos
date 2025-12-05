@@ -1,0 +1,69 @@
+SET SERVEROUT ON
+
+CREATE OR REPLACE PROCEDURE listar_columnas_tabla (
+    p_tabla IN VARCHAR2
+)
+AS
+    v_sql      VARCHAR2(1000);
+
+    TYPE t_refcur IS REF CURSOR;
+    c           t_refcur;
+
+    v_columna   VARCHAR2(128);
+    v_tipo      VARCHAR2(128);
+BEGIN
+    --------------------------------------------------------------------
+    -- 1. Validación: comprobar que la tabla existe en el esquema
+    --------------------------------------------------------------------
+    DECLARE
+        v_dummy VARCHAR2(1);
+    BEGIN
+        SELECT 'X'
+        INTO v_dummy
+        FROM USER_TABLES
+        WHERE TABLE_NAME = UPPER(p_tabla);
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(
+                -20001,
+                'La tabla "' || p_tabla || '" no existe en el esquema del usuario.'
+            );
+    END;
+
+    --------------------------------------------------------------------
+    -- 2. Construcción de SQL dinámico
+    --------------------------------------------------------------------
+    v_sql :=
+        'SELECT COLUMN_NAME, DATA_TYPE ' ||
+        'FROM USER_TAB_COLUMNS ' ||
+        'WHERE TABLE_NAME = :t ' ||
+        'ORDER BY COLUMN_ID';
+
+    --------------------------------------------------------------------
+    -- 3. Abrir cursor dinámico
+    --------------------------------------------------------------------
+    OPEN c FOR v_sql USING UPPER(p_tabla);
+
+    --------------------------------------------------------------------
+    -- 4. Procesamiento del cursor
+    --------------------------------------------------------------------
+    DBMS_OUTPUT.PUT_LINE('Columnas de la tabla ' || UPPER(p_tabla) || ':');
+    DBMS_OUTPUT.PUT_LINE(RPAD('-', 50, '-'));
+
+    LOOP
+        FETCH c INTO v_columna, v_tipo;
+        EXIT WHEN c%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            RPAD(v_columna, 30) || ' -> ' || v_tipo
+        );
+    END LOOP;
+
+    --------------------------------------------------------------------
+    -- 5. Cerrar cursor
+    --------------------------------------------------------------------
+    CLOSE c;
+
+END listar_columnas_tabla;
+/
