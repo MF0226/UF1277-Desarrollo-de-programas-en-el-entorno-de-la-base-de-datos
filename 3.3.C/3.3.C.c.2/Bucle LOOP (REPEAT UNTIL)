@@ -1,0 +1,40 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Variable para establecer el límite superior del ID de departamento que se procesará.
+    cIdentificadorLimite INTEGER := 50;
+
+    -- Define un cursor explícito y parametrizado (cDep) para seleccionar la información clave del departamento.
+    CURSOR cDep (pLimite INTEGER) IS
+        SELECT department_id, department_name
+        FROM DEPARTMENTS
+        -- Filtra solo los departamentos cuyo ID sea menor al límite pasado como parámetro.
+        WHERE DEPARTMENT_ID < pLimite
+        ORDER BY DEPARTMENT_ID;
+
+    -- Declara una variable de registro (vDep) que hereda la estructura exacta de las columnas seleccionadas por el cursor cDep.
+    vDep cDep%ROWTYPE;
+
+BEGIN
+    -- 1. Abre el cursor cDep, lo que ejecuta la consulta y lo prepara para la lectura de filas.
+    OPEN cDep (cIdentificadorLimite);
+
+    -- 2. Inicia un bucle simple (LOOP) que continuará indefinidamente hasta que se encuentre la condición de salida.
+    LOOP
+        -- 3. Extrae la siguiente fila del cursor cDep y la almacena en el registro vDep.
+        FETCH cDep INTO vDep;
+
+        -- 4. Condición de salida: si el FETCH anterior no encontró una fila (%NOTFOUND), se sale del bucle.
+        -- Este es el patrón más seguro para garantizar que la última fila extraída (y potencialmente válida) 
+        -- sea procesada antes de que el %NOTFOUND se active en el siguiente intento de FETCH.
+        EXIT WHEN cDep%NOTFOUND;
+
+        -- 5. Procesa la fila actual: muestra el ID y el nombre del departamento.
+        DBMS_OUTPUT.PUT_LINE ('Departamento :'||vDep.DEPARTMENT_ID
+                              ||' '||vDep.DEPARTMENT_NAME);
+    END LOOP;
+
+    -- 6. Cierra el cursor cDep, liberando los recursos del sistema.
+    CLOSE cDep;
+END;
+/
