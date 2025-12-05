@@ -13,8 +13,8 @@ DECLARE
         WHERE DEPARTMENT_ID < pLimite
         ORDER BY DEPARTMENT_ID;
 
-    -- Registro que hereda la estructura completa de la tabla DEPARTMENTS.
-    rDep DEPARTMENTS%ROWTYPE;
+    -- Registro que hereda la estructura del cursor cDep.
+    rDep cDep%ROWTYPE;
 
 BEGIN
     -- 1. Apertura del cursor principal. Se le pasa el valor del límite.
