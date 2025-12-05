@@ -1,0 +1,48 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Variable para definir el patrón de búsqueda del puesto de trabajo (JOB_ID).
+    cPatron VARCHAR2(15) := 'IT';
+
+    -- 1. Declaración del TIPO REF CURSOR: Define el puntero a un conjunto de resultados.
+    TYPE tPunteroCursor IS REF CURSOR;
+    -- 2. Declaración de la variable REF CURSOR: Almacenará la referencia al cursor abierto.
+    cEmpleados tPunteroCursor;
+
+    -- Registro para capturar los datos de la fila actual extraída del cursor.
+    -- Hereda la estructura de la tabla EMPLOYEES (ya que SELECT * fue usado).
+    rEmpleado EMPLOYEES%ROWTYPE;
+BEGIN
+    -- 3. Apertura Dinámica del Cursor (OPEN FOR).
+    -- La consulta SQL se define como una cadena de texto en tiempo de ejecución.
+    OPEN cEmpleados FOR
+        'SELECT * FROM EMPLOYEES
+         -- La variable de enlace :x será sustituida por el valor proporcionado en USING.
+         WHERE JOB_ID LIKE :x
+         ORDER BY LAST_NAME, FIRST_NAME
+         -- Cláusula moderna para limitar el número de filas a 3.
+         FETCH FIRST 3 ROWS ONLY'
+        -- Cláusula USING: Proporciona el valor dinámico para la variable de enlace (:x).
+        -- Se concatena el patrón ('%IT%') para realizar la búsqueda flexible.
+        USING '%' || cPatron || '%';
+
+    -- 4. Procesamiento del Cursor (LOOP).
+    -- Bucle manual para iterar sobre las filas devueltas por el cursor.
+    LOOP
+        -- Extrae la siguiente fila del conjunto de resultados al registro rEmpleado.
+        FETCH cEmpleados INTO rEmpleado;
+        
+        -- Condición de salida: Sale del bucle cuando ya no se encuentran más filas (%NOTFOUND).
+        EXIT WHEN cEmpleados%NOTFOUND;
+
+        -- Muestra el nombre y apellido del empleado actual.
+        DBMS_OUTPUT.PUT_LINE(
+            rEmpleado.FIRST_NAME || ' ' || rEmpleado.LAST_NAME
+        );
+    END LOOP;
+
+    -- 5. Cierre del Cursor.
+    -- Libera los recursos del servidor asociados al cursor. Es esencial hacerlo manualmente.
+    CLOSE cEmpleados;
+END;
+/
