@@ -176,3 +176,6 @@ BEGIN
 
 END tabla_a_json_moderna;
 /
+
+-- Ejemplo de uso
+EXECUTE tabla_a_json_moderna('REGIONS');
