@@ -1,0 +1,56 @@
+DECLARE
+    -- Variables alfanuméricas para construir y almacenar las sentencias SQL.
+    sentenciaSQL             VARCHAR2(200);
+    bloquePLSQL              VARCHAR2(200);
+    
+    -- Variables que contienen los datos a usar en el DML dinámico.
+    IDDepartamento           NUMBER(4)    := 1000;
+    nombreDepartamento       VARCHAR2(30) := 'Formación';
+    localizacionDepartamento VARCHAR2(30) := NULL;
+    
+    -- Registro para capturar los resultados del SELECT INTO dinámico.
+    rEmpleado                EMPLOYEES%ROWTYPE;
+
+BEGIN
+    -- 1. DML: Inserción (Práctica segura y eficiente)
+    
+    -- Define la sentencia INSERT. Los placeholders (:1, :2, :3) son las variables de enlace.
+    sentenciaSQL :=
+       'INSERT INTO DEPARTMENTS (DEPARTMENT_ID, DEPARTMENT_NAME, LOCATION_ID)
+        VALUES (:1, :2, :3)';
+
+    -- Ejecuta la sentencia SQL.
+    -- La cláusula USING enlaza las variables de PL/SQL con los placeholders (:1, :2, :3).
+    -- Esto evita la Inyección de SQL y mejora el rendimiento (soft parse).
+    EXECUTE IMMEDIATE sentenciaSQL
+       USING IDDepartamento, nombreDepartamento, localizacionDepartamento;
+
+    -- 2. SELECT INTO dinámico (Recuperación de una sola fila)
+    
+    -- Define la sentencia SELECT.
+    sentenciaSQL :=
+       'SELECT * FROM EMPLOYEES WHERE EMPLOYEE_ID = :id';
+
+    -- Ejecuta la sentencia.
+    -- La cláusula INTO especifica la variable de destino (rEmpleado).
+    -- La cláusula USING provee el valor para el placeholder (:id).
+    EXECUTE IMMEDIATE sentenciaSQL
+       INTO rEmpleado
+       USING 100; -- El valor 100 se enlaza a :id.
+
+    -- 3. DDL dinámico (CREATE TABLE)
+    
+    -- Las sentencias DDL (CREATE, DROP, ALTER) deben ejecutarse dinámicamente en PL/SQL.
+    -- DDL no admite variables de enlace (USING).
+    EXECUTE IMMEDIATE 'CREATE TABLE bonus (ID NUMBER, IMPORTE NUMBER)';
+
+    -- 4. Bloque PL/SQL dinámico
+    
+    -- Define un bloque anónimo de PL/SQL como una cadena de texto.
+    bloquePLSQL := 'BEGIN NULL; END;';
+    
+    -- Ejecuta el bloque PL/SQL definido dinámicamente.
+    EXECUTE IMMEDIATE bloquePLSQL;
+    
+END;
+/
