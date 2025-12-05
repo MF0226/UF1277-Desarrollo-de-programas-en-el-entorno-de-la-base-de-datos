@@ -7,7 +7,7 @@ DECLARE
     -- Cursor principal (externo) para el tratamiento de departamentos.
     -- Es parametrizado (pLimite) para reutilizar la variable cIdentificadorLimite.
     CURSOR cDep (pLimite INTEGER) IS
-        SELECT *
+        SELECT department_id, department_name
         FROM DEPARTMENTS
         -- Filtra solo los departamentos con un ID menor al límite pasado.
         WHERE DEPARTMENT_ID < pLimite
