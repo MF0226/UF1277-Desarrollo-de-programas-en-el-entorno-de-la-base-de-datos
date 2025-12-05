@@ -1,0 +1,96 @@
+SET SERVEROUTPUT ON
+
+-- 1. CREAR EL PAQUETE PARA DEFINIR EL TIPO GLOBAL
+CREATE OR REPLACE PACKAGE pkg_cursor_gestion
+AS
+    -- Definición del tipo REF CURSOR.
+    -- Debe ser un tipo de esquema (global) para que pueda ser referenciado
+    -- por distintos procedimientos y bloques (abridor y consumidor).
+    TYPE t_ref_cursor IS REF CURSOR;
+END pkg_cursor_gestion;
+/
+
+-- 2. PROCEDIMIENTO GENERADOR (Abre el cursor)
+CREATE OR REPLACE PROCEDURE abrir_cursor_dinamico (
+    p_patron IN VARCHAR2,
+    -- El REF CURSOR se define como parámetro OUT: el procedimiento "devuelve" el puntero abierto.
+    p_cursor OUT pkg_cursor_gestion.t_ref_cursor
+)
+AS
+BEGIN
+    -- OPEN FOR: Sentencia clave del SQL Dinámico para cursores.
+    -- Asocia la cadena SQL a la variable REF CURSOR (p_cursor).
+    OPEN p_cursor FOR
+        'SELECT EMPLOYEE_ID, FIRST_NAME, LAST_NAME, JOB_ID 
+         FROM EMPLOYEES
+         WHERE JOB_ID LIKE :x
+         ORDER BY LAST_NAME, FIRST_NAME
+         -- Cláusula moderna para limitar la selección a las 3 primeras filas.
+         FETCH FIRST 3 ROWS ONLY'
+        -- USING: Proporciona el valor del patrón de búsqueda dinámicamente,
+        -- evitando la concatenación insegura y permitiendo la reutilización del plan de ejecución.
+        USING '%' || p_patron || '%';
+        
+    -- NOTA: El cursor queda ABIERTO. Su cierre es responsabilidad del consumidor.
+END abrir_cursor_dinamico;
+/
+
+-- 3. PROCEDIMIENTO CONSUMIDOR (Procesa el cursor)
+CREATE OR REPLACE PROCEDURE procesar_cursor (
+    -- El REF CURSOR se define como IN OUT: recibe el puntero ya abierto y lo consume.
+    p_cursor IN OUT pkg_cursor_gestion.t_ref_cursor
+)
+AS
+    -- Se define un tipo RECORD localmente para mapear con precisión las columnas
+    -- seleccionadas en el procedimiento GENERADOR.
+    TYPE tEmpleado IS RECORD (
+        employee_id  EMPLOYEES.EMPLOYEE_ID%TYPE,
+        first_name   EMPLOYEES.FIRST_NAME%TYPE,
+        last_name    EMPLOYEES.LAST_NAME%TYPE,
+        job_id       EMPLOYEES.JOB_ID%TYPE
+    );
+
+    rEmpleado tEmpleado;
+BEGIN
+    
+    -- Bucle manual (LOOP...FETCH...EXIT WHEN) para iterar sobre el conjunto de resultados.
+    LOOP
+        -- FETCH: Extrae la siguiente fila del cursor que fue abierto en 'abrir_cursor_dinamico'.
+        FETCH p_cursor INTO rEmpleado;
+        
+        -- Condición de salida.
+        EXIT WHEN p_cursor%NOTFOUND;
+        
+        DBMS_OUTPUT.PUT_LINE(
+            'ID: ' || rEmpleado.employee_id ||
+            ' | Empleado: ' || rEmpleado.last_name || ', ' || rEmpleado.first_name ||
+            ' | Puesto: ' || rEmpleado.job_id
+        );
+    END LOOP;
+
+    -- CLOSE: Cierra el cursor. Es responsabilidad del consumidor cerrar el recurso recibido.
+    CLOSE p_cursor;
+
+END procesar_cursor;
+/
+
+-- 4. BLOQUE PRINCIPAL (Lógica de orquestación)
+DECLARE
+    cPatron    VARCHAR2(15) := 'IT';
+    -- La variable local que actúa como el puntero (handle) entre los procedimientos.
+    cEmpleados pkg_cursor_gestion.t_ref_cursor;
+
+BEGIN
+    -- Llama al GENERADOR: El puntero cEmpleados se abre con la consulta dinámica.
+    abrir_cursor_dinamico(
+        p_patron => cPatron,
+        p_cursor => cEmpleados 
+    );
+
+    -- Llama al CONSUMIDOR: El puntero abierto (cEmpleados) se pasa al segundo procedimiento para su lectura y cierre.
+    procesar_cursor(
+        p_cursor => cEmpleados
+    );
+    
+END;
+/
