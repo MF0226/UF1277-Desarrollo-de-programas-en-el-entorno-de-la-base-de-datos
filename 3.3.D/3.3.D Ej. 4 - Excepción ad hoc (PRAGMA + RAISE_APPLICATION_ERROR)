@@ -1,0 +1,62 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Declaración de la excepción personalizada:
+    -- 'empleadoInexistente' es un nombre que se usará para capturar el error ORA-20001
+    -- lanzado por la aplicación.
+    empleadoInexistente EXCEPTION;
+ 
+    -- Directiva del compilador (PRAGMA):
+    -- Asocia el nombre de excepción 'empleadoInexistente' con el código de error
+    -- de aplicación -20001 (lanzado con RAISE_APPLICATION_ERROR).
+    PRAGMA EXCEPTION_INIT(empleadoInexistente, -20001);
+BEGIN
+    
+    ----------------------------------------------------------------
+    -- BLOQUE INTERNO: Contiene la lógica y es donde se fuerza la excepción
+    ----------------------------------------------------------------
+    DECLARE
+        -- Declaración de la variable de registro para almacenar los datos del empleado.
+        rEmpleado EMPLOYEES%ROWTYPE;
+    BEGIN
+        -- Bucle para iterar y verificar los IDs del 1 al 100.
+        FOR i IN 1 .. 100 LOOP
+            BEGIN
+                -- Inicio del bloque BEGIN/EXCEPTION anidado para manejar el fallo de la SELECT.
+                
+                -- Intenta seleccionar el empleado cuyo ID coincide con la iteración actual.
+                SELECT * INTO rEmpleado
+                FROM EMPLOYEES
+                WHERE EMPLOYEE_ID = i;
+ 
+                -- Si la SELECT tiene éxito (el empleado existe), se imprime el nombre.
+                DBMS_OUTPUT.PUT_LINE('El empleado '|| i || ' se llama '
+                                     || rEmpleado.FIRST_NAME);
+ 
+            EXCEPTION
+                -- Captura la excepción predefinida 'NO_DATA_FOUND' (ORA-01403).
+                WHEN NO_DATA_FOUND THEN
+                    -- Se lanza el error de aplicación ORA-20001 con un mensaje descriptivo.
+                    -- Al lanzar un ORA-20001, el control salta fuera de este bloque 
+                    -- interno hacia el bloque EXCEPTION del bloque principal.
+                    RAISE_APPLICATION_ERROR(-20001,
+                        'Empleado ' || i || ' inexistente');
+            END; -- Fin del manejo de excepción a nivel de iteración
+            
+            -- Si se lanza el ORA-20001, el bucle y el bloque interno terminan aquí.
+        END LOOP;
+ 
+    END;  -- Fin del bloque interno
+ 
+    ----------------------------------------------------------------
+    -- BLOQUE EXTERNO: Captura el error de aplicación mediante la excepción asociada
+    ----------------------------------------------------------------
+EXCEPTION
+    -- Captura el error -20001 utilizando el nombre de excepción 'empleadoInexistente'
+    -- que fue asociado previamente con el PRAGMA EXCEPTION_INIT.
+    WHEN empleadoInexistente THEN
+        -- Muestra el mensaje de error personalizado capturado (incluyendo el código ORA-20001).
+        DBMS_OUTPUT.PUT_LINE('Capturado en bloque externo: ' || SQLERRM);
+ 
+END;
+/
