@@ -1,0 +1,41 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Declaración de una variable de tipo registro (rEmpleado)
+    -- que hereda la estructura completa de la tabla EMPLOYEES.
+    rEmpleado EMPLOYEES%ROWTYPE;
+BEGIN
+    -- Inicio del bucle FOR que iterará 100 veces.
+    -- La variable 'i' tomará valores de 1 a 100.
+    FOR i IN 1 .. 100 LOOP
+        
+        -- Etiqueta opcional para identificar el bloque BEGIN/END anidado.
+        <<trataExcepcion>>
+        BEGIN
+            -- Inicio del bloque anidado para el manejo de excepciones local.
+            
+            -- Sentencia crítica: intenta seleccionar todos los datos del empleado
+            -- cuyo ID coincide con la iteración actual ('i') y guardarlos en 'rEmpleado'.
+            -- Esta es la línea que puede fallar con NO_DATA_FOUND (ORA-01403).
+            SELECT * INTO rEmpleado
+            FROM EMPLOYEES
+            WHERE EMPLOYEE_ID=i;
+            
+            -- Si la SELECT tiene éxito, imprime el nombre del empleado.
+            DBMS_OUTPUT.PUT_LINE ('El empleado '||i||' se llama '
+                                 ||rEmpleado.FIRST_NAME);
+            
+        EXCEPTION
+            -- Inicio de la sección de manejo de excepciones.
+            -- Captura la excepción específica que ocurre cuando la SELECT no encuentra filas.
+            WHEN NO_DATA_FOUND
+                THEN NULL; 
+                -- Instrucción de manejo: No hacer nada (NULL). Esto permite que el
+                -- programa ignore el ID faltante y continúe con la siguiente iteración
+                -- del bucle sin terminar anormalmente.
+        END trataExcepcion;
+        
+    END LOOP;
+    
+END;
+/
