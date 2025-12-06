@@ -1,0 +1,44 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Declaración de una variable de tipo registro
+    -- para almacenar los datos de una fila de la tabla EMPLOYEES.
+    rEmpleado EMPLOYEES%ROWTYPE;
+BEGIN
+    -- Bloque BEGIN principal.
+    -- Contiene un bloque BEGIN anidado para manejar una excepción localmente.
+    BEGIN -- Tratamiento local de la excepción (Bloque Interno)
+        
+        -- Intenta seleccionar todos los datos del empleado con ID=1.
+        -- Si este empleado no existe, se lanza NO_DATA_FOUND.
+        SELECT * INTO rEmpleado
+        FROM EMPLOYEES
+        WHERE EMPLOYEE_ID=1;
+        
+    EXCEPTION
+        -- Captura la excepción predefinida NO_DATA_FOUND (ORA-01403).
+        WHEN NO_DATA_FOUND THEN 
+            -- 1. Manejo local: Se imprime un mensaje para indicar que el error fue capturado.
+            DBMS_OUTPUT.PUT_LINE ('No hay datos.');
+        
+            -- 2. Propagación: Se re-lanza la excepción original (NO_DATA_FOUND)
+            -- para que sea capturada por el siguiente bloque de manejo (el externo).
+            RAISE;
+            
+    END; -- Fin del bloque interno
+    
+    -- Esta línea solo se ejecutaría si el bloque interno terminara normalmente 
+    -- (es decir, si la SELECT * SÍ encontrara datos).
+    -- NO se ejecuta si la excepción NO_DATA_FOUND se lanza y se re-lanza con RAISE.
+    DBMS_OUTPUT.PUT_LINE ('Terminación normal del bloque');
+    
+EXCEPTION
+    -- Bloque de manejo de excepciones del bloque principal (Bloque Externo).
+    -- Captura cualquier excepción que no haya sido tratada o que haya sido re-lanzada (RAISE).
+    WHEN OTHERS THEN 
+        -- Imprime un mensaje y el código/descripción del error capturado (SQLERRM).
+        -- Captura el ORA-01403 re-lanzado por el bloque interno.
+        DBMS_OUTPUT.PUT_LINE ('Error :'||SQLERRM);
+        
+END;
+/
