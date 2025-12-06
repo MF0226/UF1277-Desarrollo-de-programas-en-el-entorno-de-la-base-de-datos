@@ -1,0 +1,57 @@
+SET SERVEROOUTPUT ON
+
+CREATE OR REPLACE PROCEDURE trataEmpleado (pID employees.employee_id%TYPE)
+AS
+    -- Declaración de la variable de registro para almacenar los datos del empleado.
+    rEmpleado    EMPLOYEES%ROWTYPE;
+    
+    -- Declaración de una excepción definida por el usuario. 
+    -- Se usará para señalar que el empleado encontrado tiene el JOB_ID 'IT_PROG'.
+    eProgramador EXCEPTION;
+BEGIN
+    
+    -- Bloque BEGIN anidado (Bloque Interno). Su propósito es manejar 
+    -- y capturar excepciones específicas (NO_DATA_FOUND y eProgramador) de forma local.
+    BEGIN -- Tratamiento local de la excepción
+        
+        -- Intenta seleccionar el empleado cuyo ID es pasado como parámetro (pID).
+        -- 1. Si el empleado NO existe, lanza NO_DATA_FOUND.
+        -- 2. Si el empleado SÍ existe, los datos se guardan en rEmpleado.
+        SELECT * INTO rEmpleado
+        FROM EMPLOYEES
+        WHERE EMPLOYEE_ID = pID;
+        
+        -- Comprobación lógica: si el puesto de trabajo del empleado es 'IT_PROG'.
+        IF rEmpleado.JOB_ID = 'IT_PROG'
+            THEN 
+                -- Si es un programador, se lanza la excepción definida por el usuario.
+                -- El control salta al WHEN eProgramador del bloque interno (Línea 23).
+                RAISE eProgramador;
+            ELSE 
+                -- Si el puesto NO es 'IT_PROG', se imprime el puesto y la ejecución del 
+                -- bloque interno finaliza exitosamente.
+                DBMS_OUTPUT.PUT_LINE ('El empleado '||pID||' trabaja de '||rEmpleado.JOB_ID);
+        END IF;
+        
+    EXCEPTION
+        -- Captura la excepción predefinida si la SELECT no encontró datos.
+        WHEN NO_DATA_FOUND
+            THEN 
+                DBMS_OUTPUT.PUT_LINE ('No hay datos.');
+        
+        -- Captura la excepción definida por el usuario (lanzada en la línea 14).
+        WHEN eProgramador
+            THEN 
+                DBMS_OUTPUT.PUT_LINE ('Error - Es un programador.');
+                
+    END; -- El bloque interno termina exitosamente después de manejar una excepción o imprimir un resultado.
+    
+-- El bloque EXCEPTION principal solo captura errores que no fueron tratados por el bloque interno.
+EXCEPTION
+    -- Esta cláusula actúa como un paraguas para cualquier error no capturado anteriormente 
+    -- (ej. TOO_MANY_ROWS, errores de conexión, etc.) que se propague fuera del bloque interno.
+    WHEN OTHERS THEN 
+        DBMS_OUTPUT.PUT_LINE ('Error :'||SQLERRM);
+        
+END;
+/
