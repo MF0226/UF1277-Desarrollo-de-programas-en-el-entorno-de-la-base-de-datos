@@ -1,38 +1,23 @@
 SET SERVEROUTPUT ON
 
 DECLARE
-    -- Declaración de una variable de tipo registro (ROWTYPE)
-    -- 'rEmpleado' contendrá los datos de una fila completa de la tabla EMPLOYEES.
-    rEmpleado EMPLOYEES%ROWTYPE;
+   -- Declaración de una variable de tipo registro basada en la estructura de la tabla EMPLOYEES.
+   rEmpleado EMPLOYEES%ROWTYPE;
 BEGIN
-    -- Inicio del bucle FOR que se ejecutará 100 veces.
-    -- La variable 'i' tomará valores enteros desde 1 hasta 100.
-    FOR i IN 1 .. 100 LOOP
-
-        -- INICIO DEL PROBLEMA POTENCIAL:
-        -- Se ejecuta una consulta SELECT * INTO dentro del bucle.
-        -- Esto realiza un viaje costoso entre PL/SQL y el motor SQL
-        -- por cada iteración (100 veces).
-
-        -- Intenta seleccionar *todos* los datos del empleado cuyo EMPLOYEE_ID
-        -- es igual al valor actual de 'i' (1, 2, 3, ..., 100).
-        SELECT * INTO rEmpleado
-        FROM EMPLOYEES
-        WHERE EMPLOYEE_ID=i;
-        
-        -- Si un ID (p. ej., 50) no existe en la tabla, esta SELECT fallará
-        -- y lanzará la excepción NO_DATA_FOUND, deteniendo el programa
-        -- si no hay un bloque EXCEPTION que lo maneje.
-
-        -- Imprime el nombre del empleado seleccionado.
-        -- Accede al campo FIRST_NAME del registro rEmpleado.
-        DBMS_OUTPUT.PUT_LINE ('El empleado se llama '
-                             ||rEmpleado.FIRST_NAME);
-                             
-    END LOOP;
-    
-    -- Nota: Para que el bucle se ejecutara completamente sin errores,
-    -- los EMPLOYEE_ID del 1 al 100 deberían existir y ser contiguos en la tabla.
-    
+   -- Inicio de un bucle FOR que itera 100 veces, con 'i' tomando valores de 1 a 100.
+   FOR i IN 1 .. 100 LOOP
+      -- Intenta seleccionar todos los datos del empleado cuyo EMPLOYEE_ID coincide con el valor actual de 'i' y los guarda en 'rEmpleado'.
+      SELECT * INTO rEmpleado
+      -- Desde la tabla EMPLOYEES.
+      FROM EMPLOYEES
+      -- Donde el ID del empleado es igual al contador del bucle.
+      WHERE EMPLOYEE_ID=i;
+      -- Imprime una línea que concatena texto fijo con el valor del campo FIRST_NAME del registro 'rEmpleado'.
+      DBMS_OUTPUT.PUT_LINE ('El empleado se llama '
+                           ||rEmpleado.FIRST_NAME);
+   END LOOP;
+-- Fin del bloque PL/SQL.
 END;
 /
+
+-- Como no se tratan las excepciones, termina con un error de aplicación
