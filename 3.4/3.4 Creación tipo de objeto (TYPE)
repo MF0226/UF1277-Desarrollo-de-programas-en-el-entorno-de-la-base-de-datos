@@ -1,3 +1,7 @@
+-- Si se han ejecutado otros scripts de este capítulo, es conveniente eliminar los tipos primero.
+DROP TYPE oTipoEmpleadoTemporal;
+DROP TYPE oTipoEmpleado;
+
 -- Declaración del tipo
 CREATE OR REPLACE TYPE oTipoEmpleado -- Se crea o reemplaza la especificación del Tipo de Objeto (Object Type).
 AS OBJECT(pID      NUMBER           -- Atributo: Identificador del empleado, de tipo NUMBER.
