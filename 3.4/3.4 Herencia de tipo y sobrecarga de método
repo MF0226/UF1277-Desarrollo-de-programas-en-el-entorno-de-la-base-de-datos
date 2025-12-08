@@ -1,6 +1,9 @@
+SET SERVEROUTPUT ON
+
 -- Si existe el subtipo, hay que borrarlo primero para evitar el error:
 -- ORA-02303: No se puede usar DROP o REPLACE para un tipo que tenga dependientes de tipo o tabla.
 DROP TYPE oTipoEmpleadoTemporal;
+DROP TYPE oTipoEmpleado;
 
 -- Creación del supertipo base (padre): oTipoEmpleado
 CREATE OR REPLACE TYPE oTipoEmpleado
@@ -11,7 +14,8 @@ AS OBJECT(pID      NUMBER           -- Atributo: Identificador del empleado.
          ,CONSTRUCTOR FUNCTION oTipoEmpleado -- Constructor con 3 parámetros iniciales.
              (pID      NUMBER
              ,pNombre  VARCHAR2
-             ,pSalario NUMBER)
+             ,pSalario NUMBER
+             ,pJefe    NUMBER)
              RETURN SELF AS RESULT
          ,MEMBER PROCEDURE verEmpleado -- Declaración del método que será sobrescrito.
          ) NOT FINAL; -- Permite que otros tipos de objeto hereden de este (es la superclase).
