@@ -1,3 +1,5 @@
+-- Nota: Para probar este ejemplo tiene que haber ejecutado antes el 
+
 -- Si existe el subtipo, hay que borrarlo primero para evitar el error:
 -- ORA-02303: No se puede usar DROP o REPLACE para un tipo que tenga dependientes de tipo o tabla.
 DROP TYPE oTipoEmpleadoTemporal;
