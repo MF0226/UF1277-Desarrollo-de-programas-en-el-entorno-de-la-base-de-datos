@@ -1,0 +1,56 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Declaración de una tabla asociativa (colección) que puede contener
+    -- instancias del tipo PADRE (oTipoEmpleado) y de sus subtipos.
+    TYPE tListaEmpleados
+        IS TABLE OF oTipoEmpleado
+           INDEX BY BINARY_INTEGER;
+    
+    vListaEmpleados tListaEmpleados;        -- La colección polimórfica.
+    vEmpleado oTipoEmpleado;                -- Variable del tipo padre.
+    vEmpleadoTemporal oTipoEmpleadoTemporal;-- Variable del tipo hijo.
+BEGIN
+    
+    -- 1. Instanciación y asignación de objetos del tipo PADRE (oTipoEmpleado)
+    
+    -- Instancia el Empleado 1 usando el constructor (4 argumentos).
+    vEmpleado := oTipoEmpleado('1'
+                              ,'Roberto Herrera'
+                              ,1000
+                              ,NULL);
+    
+    -- Modificación de un atributo. El salario es 1100.
+    vEmpleado.pSalario := vEmpleado.pSalario*1.1;
+    
+    -- Asigna la instancia del PADRE a la colección.
+    vListaEmpleados(1) := vEmpleado;
+    
+    -- Instancia el Empleado 2 directamente en la colección.
+    vListaEmpleados(2) := oTipoEmpleado('2'
+                                        ,'Subordinado'
+                                        ,100
+                                        ,1);
+    
+    -- 2. Instanciación y asignación de un objeto del tipo HIJO (oTipoEmpleadoTemporal)
+
+    -- Instancia el Empleado Temporal usando el constructor del subtipo (5 argumentos).
+    vEmpleadoTemporal := oTipoEmpleadoTemporal('10'
+                                              ,'Tiempo Parcial'
+                                              ,1000 -- Salario base para 8 horas
+                                              ,1    -- Jefe
+                                              ,4);   -- Jornada real (4 horas)
+    
+    -- Asigna la instancia del HIJO a la colección del tipo PADRE (Polimorfismo).
+    vListaEmpleados(3) := vEmpleadoTemporal;
+    
+    -- 3. Demostración de la Sobrescritura Dinámica
+    
+    FOR i IN 1 .. vListaEmpleados.LAST LOOP
+        -- POLIMORFISMO: El método 'verEmpleado' ejecutado se determina en tiempo
+        -- de ejecución, dependiendo del tipo real del objeto en vListaEmpleados(i).
+        vListaEmpleados(i).verEmpleado;
+        DBMS_OUTPUT.PUT_LINE(LPAD('-',20,'-'));
+    END LOOP;
+END;
+/
