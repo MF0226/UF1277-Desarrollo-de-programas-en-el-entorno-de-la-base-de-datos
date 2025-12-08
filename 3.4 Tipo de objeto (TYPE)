@@ -1,0 +1,62 @@
+-- Declaración del tipo
+CREATE OR REPLACE TYPE oTipoEmpleado -- Se crea o reemplaza la especificación del Tipo de Objeto (Object Type).
+AS OBJECT(pID      NUMBER           -- Atributo: Identificador del empleado, de tipo NUMBER.
+         ,pNombre  VARCHAR2(50)     -- Atributo: Nombre del empleado, de tipo cadena de hasta 50 caracteres.
+         ,pSalario NUMBER           -- Atributo: Salario del empleado, de tipo NUMBER.
+         ,pJefe    NUMBER           -- Atributo: ID del jefe del empleado, de tipo NUMBER (puede ser NULL).
+         ,CONSTRUCTOR FUNCTION oTipoEmpleado -- Declaración de la función constructora.
+             (pID      NUMBER
+             ,pNombre  VARCHAR2
+             ,pSalario NUMBER
+             ,pJefe    NUMBER)
+             RETURN SELF AS RESULT -- Indica que el constructor devuelve una instancia del propio objeto (SELF).
+         ,MEMBER PROCEDURE verEmpleado -- Declaración de un método (procedimiento) llamado verEmpleado.
+                                       -- Un método MEMBER actúa sobre una instancia específica del objeto.
+);                                     -- Fin de la especificación de atributos y métodos del objeto.
+/
+-- Cuerpo del tipo
+CREATE OR REPLACE TYPE BODY oTipoEmpleado AS -- Se crea o reemplaza el cuerpo (implementación) del Tipo de Objeto.
+    
+    -- Implementación del Constructor:
+    CONSTRUCTOR FUNCTION oTipoEmpleado
+        /* NOTA IMPORTANTE: 
+        En el TYPE BODY, no se especifica el tamaño de los tipos de datos (e.g., VARCHAR2, no VARCHAR2(50)).
+        */
+        (pID      NUMBER
+        ,pNombre  VARCHAR2
+        ,pSalario NUMBER
+        ,pJefe    NUMBER)
+        RETURN SELF AS RESULT -- Debe coincidir con la declaración del tipo.
+    IS
+        BEGIN
+            DBMS_OUTPUT.PUT_LINE('-- Constructor --');
+            
+            /* La palabra clave SELF hace referencia a la instancia del objeto 
+            que se está creando o modificando. Asignamos los parámetros 
+            de entrada (pID, pNombre, etc.) a los atributos del objeto (SELF.pID, SELF.pNombre, etc.). 
+            */
+            SELF.pID      :=pID;
+            SELF.pNombre  :=pNombre;
+            SELF.pSalario :=pSalario;
+            SELF.pJefe    :=pJefe;
+            
+            RETURN; -- El constructor implícitamente devuelve SELF.
+        END; -- Fin del Constructor
+
+    -- Implementación del Procedimiento Miembro (Método):
+    MEMBER PROCEDURE verEmpleado
+    IS
+        BEGIN
+            -- Mostrar los atributos del objeto usando SELF.
+            DBMS_OUTPUT.PUT_LINE('ID= '     ||SELF.pID);
+            DBMS_OUTPUT.PUT_LINE('Nombre= ' ||SELF.pNombre);
+            DBMS_OUTPUT.PUT_LINE('Salario=' ||SELF.pSalario);
+            
+            -- Lógica condicional: Solo muestra el jefe si el atributo no es nulo.
+            IF SELF.pJefe IS NOT NULL THEN
+                DBMS_OUTPUT.PUT_LINE('Jefe= '||SELF.pJefe);
+            END IF;
+        END; -- Fin del Procedimiento Miembro
+        
+END; -- Fin de la Implementación del Cuerpo del Tipo de Objeto
+/
