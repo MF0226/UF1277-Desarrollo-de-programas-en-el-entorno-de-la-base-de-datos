@@ -1,0 +1,41 @@
+SET SERVEROUTPUT ON
+
+DECLARE
+    -- Definición de la colección de empleados en memoria
+    TYPE tListaEmpleados IS TABLE OF oTipoEmpleado
+        INDEX BY BINARY_INTEGER;
+
+    vListaEmpleados tListaEmpleados; -- variable para almacenar los objetos
+    vEmpleado oTipoEmpleado;         -- variable para instanciar empleados
+
+BEGIN
+    -- Instanciación de un empleado usando el constructor
+    vEmpleado := oTipoEmpleado(
+                    pID      => 1,
+                    pNombre  => 'Roberto Herrera',
+                    pSalario => 1000,
+                    pJefe    => NULL
+                 );
+
+    -- Incremento del salario del empleado (ejemplo de manipulación de propiedades)
+    vEmpleado.pSalario := vEmpleado.pSalario * 1.1;
+
+    -- Asignación del objeto a la primera posición de la colección
+    vListaEmpleados(1) := vEmpleado;
+
+    -- Instanciación de un subordinado
+    vListaEmpleados(2) := oTipoEmpleado(
+                            pID      => 2,
+                            pNombre  => 'Subordinado',
+                            pSalario => 100,
+                            pJefe    => 1
+                          );
+
+    -- Iteración sobre la colección y visualización de los datos
+    FOR i IN 1 .. vListaEmpleados.LAST LOOP
+        vListaEmpleados(i).verEmpleado; -- invocación del método miembro
+        DBMS_OUTPUT.PUT_LINE(LPAD('-', 20, '-'));
+    END LOOP;
+
+END;
+/
