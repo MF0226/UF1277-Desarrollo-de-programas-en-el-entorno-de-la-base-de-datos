@@ -1,0 +1,53 @@
+CREATE OR REPLACE PROCEDURE crearFichero (pDirectorio VARCHAR2
+                                         ,pFichero    VARCHAR2)
+AS
+    -- Declaración de variables necesarias para UTL_FILE y control de flujo.
+    vFichero      UTL_FILE.FILE_TYPE;
+    vTexto        VARCHAR2(400);
+    vExiste       BOOLEAN;
+    vTamaño       NUMBER;
+    vTamañoBloque INTEGER;
+    vTipoApertura CHAR(1);
+BEGIN
+    -- 1. Generación del contenido de la traza
+    -- Genera la fecha y hora en formato largo y concatena todo en una sola línea.
+    vTexto := TO_CHAR(SYSDATE,'FM"Fichero creado '
+                              ||'el "day" día "dd" de "month" de "YYYY"'
+                              ||' a las "HH24" horas y "MI" minutos"');
+    
+    -- Muestra el texto en la consola de depuración (DBMS_OUTPUT).
+    DBMS_OUTPUT.PUT_LINE(vTexto);
+    
+    -- 2. Verificación de existencia del fichero
+    -- Recupera los atributos del fichero para verificar si existe o no.
+    UTL_FILE.FGETATTR(pDirectorio  -- Objeto DIRECTORY
+                      ,pFichero     -- Nombre del archivo
+                      ,vExiste      -- [OUT] TRUE si existe, FALSE si no
+                      ,vTamaño      -- [OUT] Tamaño del archivo
+                      ,vTamañoBloque); -- [OUT] Tamaño del bloque
+    
+    -- 3. Lógica para determinar el modo de apertura
+    -- Si NO existe, abre en modo 'W' (Write: crea el archivo y lo sobrescribe si ya estuviera).
+    IF NOT vExiste THEN 
+        vTipoApertura := 'W';
+    -- Si SÍ existe, abre en modo 'A' (Append: añade al final del archivo existente).
+    ELSE
+        vTipoApertura := 'A';
+    END IF;
+    
+    -- 4. Apertura, Escritura y Cierre
+    -- Abre el fichero usando el modo determinado.
+    vFichero := UTL_FILE.FOPEN(pDirectorio
+                              ,pFichero
+                              ,vTipoApertura);
+    
+    -- Escribe la línea completa de texto y añade automáticamente un salto de línea (PUT_LINE).
+    UTL_FILE.PUT_LINE(vFichero,vTexto); 
+    
+    -- Cierra el fichero, liberando el manejador y asegurando que los datos se guarden.
+    UTL_FILE.FCLOSE(vFichero);
+END;
+/
+
+-- Ejecutar el procedimiento
+EXECUTE crearFichero('LOG_DIR','traza.log');
