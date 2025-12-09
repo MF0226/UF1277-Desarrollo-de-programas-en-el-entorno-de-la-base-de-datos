@@ -1,0 +1,151 @@
+-- Define o reemplaza un procedimiento que genera una tabla HTML de empleados.
+-- Recibe un parámetro opcional para filtrar por departamento.
+CREATE OR REPLACE PROCEDURE tablaHTML (pDepartamento INTEGER) IS
+    -- Variable para el formato de salida de números (salarios/totales).
+    -- 'L' indica el símbolo de la moneda local.
+    cFormato VARCHAR2(15) := '9,999,999.00L';
+
+    -- Definición del CURSOR para obtener los datos de los empleados.
+    -- Es un cursor con un parámetro (bDepartamento) que se mapea al parámetro de entrada del procedimiento.
+    CURSOR cEmpleados (bDepartamento INTEGER) IS
+        SELECT FIRST_NAME||' '||LAST_NAME Nombre, -- Concatena nombre y apellido.
+               SALARY                     Salario, -- Alias para la columna de salario.
+               COMMISSION_PCT             Comisión -- Alias para la columna de comisión.
+        FROM HR.EMPLOYEES -- Asume que se usa la tabla de ejemplo HR.EMPLOYEES.
+        WHERE bDepartamento IS NULL -- Si el parámetro es NULL, trae todos los empleados.
+           OR DEPARTMENT_ID = bDepartamento -- Si no es NULL, filtra por ese departamento.
+        ORDER BY LAST_NAME; -- Ordena los resultados por apellido.
+
+    -- 1. Función Sobrecargada para formatear el SALARIO.
+    FUNCTION formatear (pSalario EMPLOYEES.SALARY%TYPE)
+        RETURN VARCHAR2 AS
+    BEGIN
+        -- Si el salario no es nulo, aplica el formato de moneda.
+        IF pSalario IS NOT NULL THEN
+            RETURN TO_CHAR(pSalario, cFormato);
+        ELSE
+            RETURN NULL;
+        END IF;
+    END formatear;
+
+    -- 2. Función Sobrecargada para formatear la COMISIÓN.
+    FUNCTION formatear (pComisión EMPLOYEES.COMMISSION_PCT%TYPE)
+        RETURN VARCHAR2 AS
+        -- Formato específico para la comisión (dos decimales).
+        cFormato VARCHAR2(15) := '0.00';
+    BEGIN
+        -- Si la comisión no es nula, la formatea y añade el símbolo de porcentaje.
+        IF pComisión IS NOT NULL THEN
+            RETURN TO_CHAR(pComisión, cFormato) || '%';
+        ELSE
+            RETURN NULL;
+        END IF;
+    END formatear;
+
+    -- 3. Función Sobrecargada para formatear el SALARIO TOTAL (Salario + Comisión).
+    FUNCTION formatear (pSalario EMPLOYEES.SALARY%TYPE,
+                        pComisión EMPLOYEES.COMMISSION_PCT%TYPE)
+        RETURN VARCHAR2 AS
+    BEGIN
+        -- Calcula el salario total (Salario * (1 + Comisión)).
+        -- Si el cálculo (incluyendo comisión) no es nulo, aplica el formato de moneda.
+        IF pSalario * (1 + pComisión) IS NOT NULL THEN
+            RETURN TO_CHAR(pSalario * (1 + pComisión), cFormato);
+        -- Si el cálculo anterior falló (ej. la comisión es NULL), pero el salario base existe, retorna solo el salario.
+        ELSIF pSalario IS NOT NULL THEN
+            RETURN TO_CHAR(pSalario, cFormato);
+        -- Si todo es nulo, retorna nulo.
+        ELSE
+            RETURN NULL;
+        END IF;
+    END formatear;
+
+-- Inicio del cuerpo del procedimiento principal.
+BEGIN
+    -- Utiliza HTP.P para imprimir el inicio de la estructura HTML (documento, head, body, tabla).
+    HTP.P('
+        <!DOCTYPE html> -- Declaración del tipo de documento (HTML5).
+        <html>          -- Inicio del elemento raíz HTML.
+            <head>      -- Contenedor para metadatos y estilos.
+                <style> -- Inicio de la definición de estilos CSS.
+                    -- Define una clase CSS para alinear texto a la derecha.
+                    .dcha { text-align:right; } 
+                </style> -- Fin de la definición de estilos CSS.
+            </head>     -- Fin de la cabecera.
+            <body>      -- Inicio del contenido visible de la página.
+                <div align="center"> -- Contenedor para centrar la tabla.
+                    <table class="box"> -- Inicio de la tabla de empleados.
+                        <tr>           -- Fila de encabezados.
+                            <th>Nombre</th>     -- Columna 1: Nombre.
+                            <th>Salario</th>    -- Columna 2: Salario.
+                            <th>Comisión</th>   -- Columna 3: Comisión.
+                            <th>Total</th>      -- Columna 4: Salario Total.
+                        </tr>          -- Fin de la fila de encabezados.
+    ');
+
+    -- Itera sobre los resultados del cursor, pasando el parámetro de departamento al cursor.
+    FOR rEmpleado IN cEmpleados(pDepartamento) LOOP
+        -- Imprime una fila de la tabla (<tr>) por cada empleado.
+        HTP.P(
+            '<tr><td>' || rEmpleado.Nombre || '</td>' ||                  -- Celda 1: Nombre del empleado (sin formato).
+            '<td class="dcha">' || formatear(pSalario => rEmpleado.Salario) || '</td>' || -- Celda 2: Salario, alineado a la derecha, formato moneda.
+            '<td class="dcha">' || formatear(pComisión => rEmpleado.Comisión) || '</td>' || -- Celda 3: Comisión, alineado a la derecha, formato porcentaje.
+            '<td class="dcha">' || formatear(rEmpleado.Salario, rEmpleado.Comisión) || '</td></tr>' -- Celda 4: Total, alineado a la derecha, formato moneda.
+        );
+    END LOOP;
+
+    -- Imprime el cierre de la tabla y de la estructura HTML.
+    HTP.P('
+                    </table> -- Fin de la tabla.
+                </div>     -- Fin del div centrado.
+            </body>    -- Fin del cuerpo de la página.
+        </html>    -- Fin del documento HTML.
+    ');
+
+-- Manejo de excepciones: si ocurre un error, imprime el mensaje de error de SQL en el cuerpo de la respuesta HTML.
+EXCEPTION
+    WHEN OTHERS THEN
+        HTP.P(SQLERRM);
+END tablaHTML;
+/
+
+-- Crear módulo ORDS
+BEGIN
+    -- Crear módulo REST para tus páginas web
+    ORDS.DEFINE_MODULE(
+        p_module_name    => 'web_mod',
+        p_base_path      => '/web/',   -- prefijo de la URL
+        p_items_per_page => 0
+    );
+
+    -- Crear plantilla para la URL específica
+    ORDS.DEFINE_TEMPLATE(
+        p_module_name => 'web_mod',
+        p_pattern     => 'tablaHTML'   -- endpoint final: /web/tablaHTML
+    );
+
+    -- Crear handler GET que reciba parámetro
+    ORDS.DEFINE_HANDLER(
+        p_module_name  => 'web_mod',
+        p_pattern      => 'tablaHTML',
+        p_method       => 'GET',
+        p_source_type  => 'plsql/block',
+        p_source       => '
+        DECLARE
+            vDept NUMBER;
+        BEGIN
+            -- :pDepartamento es el parámetro enviado en la URL
+            IF :pDepartamento IS NOT NULL THEN
+                vDept := TO_NUMBER(:pDepartamento);
+            ELSE
+                vDept := NULL;
+            END IF;
+
+            tablaHTML(vDept);
+        END;'
+    );
+
+    COMMIT;
+
+END;
+/
