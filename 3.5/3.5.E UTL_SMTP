@@ -1,0 +1,125 @@
+-- Habilita la salida para ver los mensajes de DBMS_OUTPUT (éxito o error).
+SET SERVEROUTPUT ON;
+
+-- Crea o reemplaza un procedimiento llamado enviar_correo_gmail que acepta tres parámetros de entrada.
+CREATE OR REPLACE PROCEDURE enviar_correo_gmail (
+    p_destinatario IN VARCHAR2, -- Dirección de correo del destinatario.
+    p_asunto       IN VARCHAR2, -- Asunto del correo.
+    p_mensaje      IN VARCHAR2  -- Cuerpo del mensaje.
+)
+AS
+    -- Definición de constantes para la conexión SMTP de Google.
+    c_smtp_host  CONSTANT VARCHAR2(100) := 'smtp.gmail.com';     -- Servidor SMTP de Gmail.
+    c_smtp_port  CONSTANT NUMBER        := 587;                  -- Puerto requerido por Gmail para TLS/STARTTLS.
+    c_gmail_user CONSTANT VARCHAR2(200) := 'CUENTA_DE_EJEMPLO@gmail.com'; -- <--- ANÓNIMA: Cuenta de Gmail remitente.
+    c_app_passwd CONSTANT VARCHAR2(50)  := 'XXXX YYYY ZZZZ NNNN';    -- <--- ANÓNIMA: Contraseña de Aplicación de Google.
+    
+    -- Variable para la conexión SMTP.
+    l_mail_conn UTL_SMTP.connection; 
+BEGIN
+    -- Apertura de Conexión
+    l_mail_conn := UTL_SMTP.OPEN_CONNECTION(c_smtp_host, c_smtp_port);
+
+    -- Saluda al servidor e inicia la sesión.
+    UTL_SMTP.EHLO(l_mail_conn, c_smtp_host);
+    
+    -- Inicia la capa de cifrado TLS (obligatorio para Gmail).
+    UTL_SMTP.STARTTLS(l_mail_conn);
+
+    -- Autenticación
+    -- Se autentica en el servidor SMTP con las credenciales (usuario y App Password).
+    UTL_SMTP.AUTH(l_mail_conn, c_gmail_user, c_app_passwd, 'LOGIN');
+
+    -- Definición de Remitente y Destinatario
+    UTL_SMTP.MAIL(l_mail_conn, c_gmail_user); 
+    UTL_SMTP.RCPT(l_mail_conn, p_destinatario);
+
+    -- Creación y Envío del Cuerpo del Mensaje
+    UTL_SMTP.OPEN_DATA(l_mail_conn); 
+    
+    -- Cabeceras SMTP:
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'From: ' || c_gmail_user || UTL_TCP.CRLF);
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'To: ' || p_destinatario || UTL_TCP.CRLF);
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'Subject: ' || p_asunto || UTL_TCP.CRLF);
+    
+    -- Cabecera de fecha y MIME:
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'Date: ' ||
+        TO_CHAR(SYSDATE, 'Dy, DD Mon YYYY HH24:MI:SS') || UTL_TCP.CRLF);
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'MIME-Version: 1.0' || UTL_TCP.CRLF);
+    UTL_SMTP.WRITE_DATA(l_mail_conn, 'Content-Type: text/plain; charset="UTF-8"' ||
+        UTL_TCP.CRLF || UTL_TCP.CRLF); -- Doble CRLF separa las cabeceras del cuerpo.
+        
+    -- Envío del cuerpo.
+    UTL_SMTP.WRITE_DATA(l_mail_conn, p_mensaje || UTL_TCP.CRLF);
+    
+    -- Cierra la sección DATA.
+    UTL_SMTP.CLOSE_DATA(l_mail_conn); 
+
+    -- Cierre de la Conexión
+    UTL_SMTP.QUIT(l_mail_conn); 
+
+    DBMS_OUTPUT.PUT_LINE('Correo enviado con éxito a: ' || p_destinatario);
+
+-- Manejo de Excepciones
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error al enviar correo: ' || SQLERRM);
+        -- Intenta cerrar la conexión de forma segura en caso de fallo.
+        BEGIN
+            UTL_SMTP.QUIT(l_mail_conn);
+        EXCEPTION
+            WHEN OTHERS THEN NULL;
+        END;
+END enviar_correo_gmail;
+/
+
+-- Creación de la ACL
+-- Ejecutar como usuario con privilegios de DBA (por ejemplo, SYS)
+BEGIN
+    -- 1. CREAR el archivo ACL
+    -- Define quién puede acceder (principal) y qué privilegio tiene (connect).
+    DBMS_NETWORK_ACL_ADMIN.CREATE_ACL (
+        acl         => 'gmail_smtp_acl.xml',
+        description => 'Acceso a smtp.gmail.com para UTL_SMTP',
+        principal   => 'HR',             -- !!! CAMBIAR: Usar el nombre de usuario/esquema que ejecuta el PL/SQL
+        is_grant    => TRUE,
+        privilege   => 'connect'         -- Permite la conexión TCP/IP
+    );
+
+    -- 2. ASIGNAR el Host y Puerto a la ACL
+    -- Vincula el archivo ACL creado al servidor SMTP y al puerto 587.
+    DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL (
+        acl         => 'gmail_smtp_acl.xml',
+        host        => 'smtp.gmail.com',  -- Host de Gmail
+        lower_port  => 587,               -- Puerto SMTP seguro (STARTTLS)
+        upper_port  => 587
+    );
+    
+    -- 3. CONFIRMAR la transacción (Commit)
+    -- El commit debe estar dentro del bloque o inmediatamente después para asegurar la persistencia de los cambios.
+    COMMIT;
+END;
+/
+
+-- Verificación de la ACL
+SELECT HOST, ACL FROM DBA_NETWORK_ACLS;
+SELECT ACL, PRINCIPAL, PRIVILEGE FROM DBA_NETWORK_ACL_PRIVILEGES;
+
+-- Envío de un correo
+-- Inicio del bloque anónimo PL/SQL.
+BEGIN
+    -- Llama al procedimiento creado que maneja la conexión, autenticación y envío.
+    enviar_correo_gmail(
+        -- Parámetro: Dirección de correo electrónico del destinatario real.
+        p_destinatario => 'DESTINATARIO@DOMINIO.com', 
+        
+        -- Parámetro: El asunto que aparecerá en la bandeja de entrada.
+        p_asunto       => 'Prueba desde Oracle 26ai', 
+        
+        -- Parámetro: El cuerpo del mensaje de prueba.
+        p_mensaje      => '¡Hola! Este correo fue enviado desde Oracle 26ai Free' || 
+                          ' usando UTL_SMTP con Gmail STARTTLS y App Password.' || 
+                          ' Todo configurado correctamente'
+    );
+END;
+/
