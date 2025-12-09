@@ -1,0 +1,51 @@
+-- Este bloque define y reemplaza un procedimiento almacenado.
+-- Aunque el nombre 'hola_mundo' sugiere una funcionalidad simple,
+-- en este contexto, el procedimiento se usa para configurar ORDS.
+CREATE OR REPLACE PROCEDURE hola_mundo AS
+BEGIN
+    -- Esto es para ORDS: Comentario original que indica que el propósito es la configuración de ORDS.
+
+    -- Habilita el acceso REST para un esquema de base de datos específico.
+    ORDS.ENABLE_SCHEMA(
+        p_enabled => TRUE, -- Indica que el esquema debe estar habilitado para REST.
+        p_schema  => 'TU_ESQUEMA', -- Reemplaza con el nombre real de tu esquema de BD (por ejemplo, HR, SCOTT, etc.).
+        p_url_mapping_type => 'BASE_PATH', -- Define cómo se construyen las URLs (en este caso, usando un prefijo).
+        p_url_mapping_pattern => 'api' -- El prefijo de la URL que se usará para acceder a este esquema (e.g., /ords/api/...).
+    );
+END;
+/
+
+-- Este bloque anónimo ejecuta comandos de configuración de ORDS.
+BEGIN
+    -- 1. Define un MÓDULO ORDS: Es una colección de servicios REST con una base de URL común.
+    ORDS.DEFINE_MODULE(
+        p_module_name   => 'hola_modulo', -- Nombre lógico para este conjunto de servicios.
+        p_base_path     => '/api', -- El prefijo de la URL para todas las plantillas (templates) dentro de este módulo (e.g., /ords/api/...).
+        p_items_per_page => 0 -- Configuración de paginación (0 significa que la paginación no está forzada).
+    );
+
+    -- 2. Define una PLANTILLA (TEMPLATE) ORDS: Define la estructura de la URL dentro del módulo.
+    ORDS.DEFINE_TEMPLATE(
+        p_module_name   => 'hola_modulo', -- Especifica a qué módulo pertenece esta plantilla.
+        p_pattern       => 'hola' -- La parte final de la URL (e.g., /ords/api/hola).
+    );
+
+    -- 3. Define un HANDLER ORDS: Es el código real que se ejecuta cuando se llama a la URL definida por el módulo y la plantilla.
+    ORDS.DEFINE_HANDLER(
+        p_module_name   => 'hola_modulo', -- Módulo al que se asocia este manejador.
+        p_pattern       => 'hola', -- Plantilla de URL a la que responde este manejador.
+        p_method        => 'GET', -- El método HTTP al que responde (GET, POST, PUT, DELETE).
+        p_source_type   => 'plsql/block', -- Indica que el código fuente es un bloque PL/SQL.
+        p_source        =>
+          'BEGIN
+              -- Genera la respuesta HTML
+              -- HTP.P es un procedimiento del paquete HTP que imprime datos directamente al búfer de salida HTTP.
+              -- Esto es lo que el navegador/cliente recibirá como respuesta.
+              HTP.P(''<html><body><h1>Hola Mundo</h1></body></html>'');
+          END;'
+    );
+
+    -- Confirma la transacción en la base de datos, guardando los cambios de configuración de ORDS.
+    COMMIT;
+END;
+/
