@@ -1,0 +1,28 @@
+-- Función: muestraTexto
+-- Propósito: Devuelve exactamente el mismo texto que se le pasa como argumento.
+-- Es un ejemplo muy simple de una función definida por el usuario.
+CREATE OR REPLACE FUNCTION muestraTexto (
+    -- Parámetro de entrada:
+    -- pTexto: Una cadena de caracteres (VARCHAR2) que contiene el texto a devolver.
+    -- El prefijo 'p' (o 'p_') es una convención común para indicar que es un parámetro.
+    pTexto IN VARCHAR2 
+)
+-- Tipo de dato que la función devolverá al finalizar su ejecución.
+RETURN VARCHAR2 
+AS
+-- Sección de declaración de variables locales (en este caso, no se usan).
+BEGIN
+    -- La lógica de la función: simplemente devuelve el valor del parámetro de entrada.
+    RETURN pTexto;
+END muestraTexto; -- Se recomienda repetir el nombre de la función al final.
+/
+
+-- Ejemplo de llamada a la función desde una consulta SQL:
+-- La función es evaluada fila por fila (aunque DUAL solo tiene una fila).
+SELECT muestraTexto('Hola mundo') AS "Mensaje_Devuelto"
+FROM DUAL;
+
+-- Salida:
+-- MENSAJE_DEVUELTO
+-- -------------------------------------------------------------------
+-- Hola mundo
