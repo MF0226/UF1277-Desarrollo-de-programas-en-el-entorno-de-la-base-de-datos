@@ -1,0 +1,85 @@
+-- Procedimiento: cifradorCesar
+-- Propósito: Cifra un texto de entrada utilizando el método de Cifrado César,
+--            aplicando un desplazamiento cíclico a un alfabeto predefinido
+--            que incluye minúsculas, mayúsculas y el espacio.
+CREATE OR REPLACE PROCEDURE cifradorCesar (
+    -- Parámetro 1: Texto a cifrar (IN - solo entrada)
+    pTexto          IN VARCHAR2,
+    -- Parámetro 2: Número de posiciones a desplazar el alfabeto (IN - solo entrada)
+    pDesplazamiento IN INTEGER
+) 
+AS
+    -------------------------------------------
+    -- 1. DECLARACIÓN DE CONSTANTES Y VARIABLES
+    -------------------------------------------
+    
+    -- Constante: Número total de caracteres a cifrar.
+    -- (26 minúsculas + 26 mayúsculas + 1 espacio = 53)
+    cNumeroLetras      CONSTANT INTEGER := 53;
+    
+    -- Constante: El alfabeto original completo.
+    cAlfabetoOriginal  CONSTANT CHAR(cNumeroLetras) := 
+        'abcdefghijklmnopqrstuvwxyz' || -- 26 minúsculas
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ' || -- 26 mayúsculas
+        ' ';                            -- 1 espacio
+        
+    -- Variable: Almacenará el alfabeto desplazado/cifrado.
+    vAlfabetoCifrado   CHAR(cNumeroLetras)     := '';
+    
+    -- Variable: Almacenará el resultado final del texto cifrado.
+    vTextoCifrado      VARCHAR2(1000)          := '';
+
+    -------------------------------------------
+    -- 2. FUNCIÓN ANIDADA: desplazarAlfabeto
+    -------------------------------------------
+    
+    -- Función: Calcula el alfabeto desplazado (cifrado).
+    FUNCTION desplazarAlfabeto (
+        pAlfabetoOriginal IN CHAR,   -- Alfabeto base a rotar.
+        pDesplazamiento   IN INTEGER  -- Número de posiciones.
+    )
+    RETURN CHAR 
+    IS
+        -- Variable temporal para construir el alfabeto desplazado.
+        vCifradoTemporal VARCHAR2(100) := '';
+    BEGIN
+        -- Bucle que recorre cada posición del alfabeto original.
+        FOR i IN 1 .. LENGTH(pAlfabetoOriginal) 
+        LOOP
+            -- Cálculo del índice de la letra cifrada (circularidad del cifrado César).
+            -- Lógica Clave: (índice_actual + desplazamiento) MOD número_total_letras + 1
+            -- El +1 es necesario porque en PL/SQL (y en SUBSTR) la posición inicial es 1, no 0.
+            vCifradoTemporal := vCifradoTemporal ||
+                                SUBSTR(pAlfabetoOriginal, 
+                                       ((i + pDesplazamiento) MOD cNumeroLetras) + 1, 
+                                       1);
+        END LOOP;
+        
+        RETURN vCifradoTemporal;
+    END desplazarAlfabeto;
+
+-------------------------------------------
+-- 3. CUERPO PRINCIPAL DEL PROCEDIMIENTO
+-------------------------------------------
+BEGIN
+    -- Paso 1: Generar el Alfabeto Cifrado
+    -- Llama a la función anidada para obtener la clave de cifrado (el alfabeto rotado).
+    vAlfabetoCifrado := desplazarAlfabeto(cAlfabetoOriginal, pDesplazamiento);
+    
+    -- Paso 2: Cifrar el Texto Usando TRANSLATE
+    -- La función TRANSLATE sustituye cada carácter de pTexto
+    -- que se encuentra en cAlfabetoOriginal por el carácter correspondiente
+    -- en la misma posición de vAlfabetoCifrado.
+    vTextoCifrado := TRANSLATE(pTexto,
+                               cAlfabetoOriginal,
+                               vAlfabetoCifrado);
+    
+    -- Paso 3: Mostrar el resultado
+    -- Imprime el texto cifrado en la salida de la base de datos.
+    DBMS_OUTPUT.PUT_LINE(vTextoCifrado);
+    
+END cifradorCesar;
+/
+
+-- Ejecución del procedimiento
+EXECUTE cifradorCesar('Roberto Herrera',15);
