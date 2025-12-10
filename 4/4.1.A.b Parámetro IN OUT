@@ -1,0 +1,49 @@
+SET SERVEROUTPUT ON
+
+-- Bloque PL/SQL Anónimo
+DECLARE
+    -- 1. Declaración de una variable local en el bloque principal.
+    --    Esta variable se inicializa con el valor que pasaremos a la función.
+    vTexto VARCHAR2(100) := '¡Hola mundo!';
+
+    -- 2. Declaración de una Función Local anidada dentro del bloque DECLARE.
+    FUNCTION muestraTexto (
+        -- Parámetro: pTexto
+        -- MODO: IN OUT
+        -- Este modo permite que la función NO solo reciba un valor (IN), 
+        -- sino que también pueda MODIFICAR el valor de la variable
+        -- que se le pasó como argumento, y que este cambio se refleje 
+        -- FUERA de la función (OUT).
+        pTexto IN OUT VARCHAR2 
+    )
+    RETURN VARCHAR2 AS
+    BEGIN
+        -- 3. Modificación del Parámetro (Efecto Colateral)
+        --    Al ser IN OUT, esta línea cambia el valor de la variable 'vTexto'
+        --    en el bloque principal cuando la función termina su ejecución.
+        pTexto := 'No muestro el mensaje';
+        
+        -- 4. Retorno de la función
+        --    La función devuelve el nuevo valor modificado.
+        RETURN pTexto;
+    END muestraTexto;
+
+-- Cuerpo principal del Bloque Anónimo
+BEGIN
+    -- A. Mensaje inicial (antes de la llamada a la función).
+    DBMS_OUTPUT.PUT_LINE('El texto original es: ' || vTexto);
+
+    -- B. Llamada a la Función y muestra de su retorno.
+    --    1. El valor de vTexto ('¡Hola mundo!') se pasa a la función.
+    --    2. La función se ejecuta, cambiando internamente el valor de pTexto
+    --       a 'No muestro el mensaje'.
+    --    3. La función devuelve este nuevo valor.
+    DBMS_OUTPUT.PUT_LINE('Función -> ' || muestraTexto(vTexto));
+
+    -- C. Mensaje final (después de la llamada a la función).
+    --    Debido al modo IN OUT, la variable 'vTexto' del bloque principal 
+    --    se ha modificado permanentemente.
+    DBMS_OUTPUT.PUT_LINE('El texto final es: ' || vTexto);
+
+END;
+/
