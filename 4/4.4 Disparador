@@ -1,0 +1,46 @@
+-- Creación del Disparador (Trigger)
+CREATE OR REPLACE TRIGGER incrementoSalarial
+    -- 1. Timing y Evento:
+    -- BEFORE UPDATE: El código se ejecuta ANTES de que la base de datos aplique
+    -- la modificación de la fila.
+    -- OF SALARY: El disparador solo se activa si la columna SALARY es afectada.
+    -- ON employees: La tabla a la que está asociado el disparador.
+    BEFORE UPDATE OF SALARY ON employees
+    
+    -- 2. Scope:
+    -- FOR EACH ROW: El disparador se ejecuta una vez por cada fila que cumpla
+    -- con la condición de la sentencia UPDATE.
+    FOR EACH ROW
+    
+    -- 3. Condición (Opcional):
+    -- WHEN: Restringe la ejecución del código interno.
+    -- Solo se ejecuta si el nuevo salario propuesto (:NEW) es diferente al anterior (:OLD).
+    WHEN (NEW.SALARY <> OLD.SALARY)
+    
+    -- 4. Sección de Declaración (Opcional):
+    DECLARE
+        -- Aunque la variable vIncremento no se usa en el DBMS_OUTPUT,
+        -- se declara aquí para ilustrar el uso de variables locales.
+        vIncremento NUMBER;
+    BEGIN
+        -- 5. Lógica del Trigger:
+        
+        -- Cálculo de la diferencia absoluta (no es estrictamente necesario aquí, pero demuestra acceso a variables).
+        vIncremento := :NEW.SALARY - :OLD.SALARY; 
+        
+        -- Impresión del Mensaje de Incremento:
+        DBMS_OUTPUT.PUT_LINE(
+            'Salario empleado nº ' || :OLD.EMPLOYEE_ID ||               -- Usa :OLD para el ID del empleado (el ID no cambia).
+            ' ha sido incrementado un ' ||
+            
+            -- Cálculo del porcentaje de incremento:
+            -- Fórmula: ((Nuevo Salario - Antiguo Salario) * 100) / Antiguo Salario
+            ((:NEW.SALARY - :OLD.SALARY) * 100 / :OLD.SALARY) ||        -- Usa :NEW para el nuevo valor y :OLD para el valor inicial.
+            '%'
+        );
+        
+        -- Nota sobre Triggers BEFORE: Si se estuviera modificando un valor,
+        -- se podría hacer aquí: :NEW.COMMISSION := 0.1 * :NEW.SALARY;
+        
+    END incrementoSalarial;
+/
