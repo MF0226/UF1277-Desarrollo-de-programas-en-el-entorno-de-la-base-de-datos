@@ -1,0 +1,92 @@
+-- ESPECIFICACIÓN DEL PAQUETE: CalculadoraAreas
+-- Propósito: Agrupar procedimientos de cálculo de áreas,
+--            usando Sobrecarga (Overloading) para el nombre 'area'.
+CREATE OR REPLACE PACKAGE CalculadoraAreas AS
+    
+    -- 1. Firma para CÍRCULO: requiere solo el radio (1 parámetro NUMBER).
+    PROCEDURE area (pRadio NUMBER);
+    
+    -- 2. Firma para CUADRADO: requiere solo el lado (1 parámetro NUMBER).
+    -- Nota: Al tener el mismo número y tipo de parámetro que el CÍRCULO,
+    -- requiere el uso de la Notación Nominada (pRadio=>X o pLado=>X) al ser llamado.
+    PROCEDURE area (pLado NUMBER);
+    
+    -- 3. Firma para RECTÁNGULO: requiere dos lados (2 parámetros NUMBER).
+    PROCEDURE area (pLadoUno NUMBER, pLadoDos NUMBER);
+    
+    -- 4. Firma para TRIÁNGULO: requiere base y altura (2 parámetros NUMBER).
+    -- Nota: Al tener el mismo número y tipo de parámetros que el RECTÁNGULO,
+    -- también requiere el uso de la Notación Nominada al ser llamado.
+    PROCEDURE area (pBase NUMBER, pAltura NUMBER);
+    
+END CalculadoraAreas;
+/
+
+-- CUERPO DEL PAQUETE: CalculadoraAreas
+CREATE OR REPLACE PACKAGE BODY CalculadoraAreas AS
+    
+    -- Constante: Valor de Pi, necesario para el cálculo del círculo.
+    cPI CONSTANT NUMBER := 3.141592653589793238462643383279502884197;
+    
+    -- Implementación del procedimiento 'area' para CÍRCULO: área = π * radio^2
+    PROCEDURE area (pRadio NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('El área es ' || cPI * POWER(pRadio, 2));
+    END area;
+    
+    -- Implementación del procedimiento 'area' para CUADRADO: área = lado^2
+    PROCEDURE area (pLado NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('El área es ' || POWER(pLado, 2));
+    END area;
+    
+    -- Implementación del procedimiento 'area' para RECTÁNGULO: área = lado1 * lado2
+    PROCEDURE area (pLadoUno NUMBER, pLadoDos NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('El área es ' || pLadoUno * pLadoDos);
+    END area;
+    
+    -- Implementación del procedimiento 'area' para TRIÁNGULO: área = (base * altura) / 2
+    PROCEDURE area (pBase NUMBER, pAltura NUMBER) IS
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('El área es ' || pBase * pAltura / 2);
+    END area;
+    
+END CalculadoraAreas;
+/
+
+SET SERVEROUTPUT ON
+
+-- Bloque PL/SQL Anónimo para probar la sobrecarga del paquete CalculadoraAreas.
+BEGIN
+    -- 1. Llamada para el CÍRCULO:
+    -- La Notación Nominada (pRadio=>10) resuelve la ambigüedad con el Cuadrado,
+    -- ya que solo la firma del Círculo usa el parámetro 'pRadio'.
+    DBMS_OUTPUT.PUT_LINE('--- Cálculo de Área ---');
+    CalculadoraAreas.Area(pRadio => 10);
+    -- Resultado: El área es 314,15...
+    
+    -- 2. Llamada para el CUADRADO:
+    -- La Notación Nominada (pLado=>10) distingue esta llamada de la del Círculo.
+    CalculadoraAreas.Area(pLado => 10);
+    -- Resultado: El área es 100
+    
+    -- 3. Llamada para el RECTÁNGULO:
+    -- Se utilizan los nombres de parámetros pLadoUno y pLadoDos.
+    -- Esto resuelve la ambigüedad con el Triángulo, que tiene el mismo número y tipo.
+    CalculadoraAreas.Area(pLadoUno => 10, pLadoDos => 20);
+    -- Resultado: El área es 200
+    
+    -- 4. Llamada para el TRIÁNGULO:
+    -- Se utilizan los nombres de parámetros pBase y pAltura.
+    CalculadoraAreas.Area(pBase => 10, pAltura => 20);
+    -- Resultado: El área es 100
+    
+    -- 5. Demostración de ORDEN con Notación Nominada (llamada original extra)
+    DBMS_OUTPUT.PUT_LINE('--- Prueba de Orden Libre ---');
+    -- Al usar la notación con nombre, el orden de los argumentos no importa.
+    CalculadoraAreas.Area(pLadoDos => 10, pLadoUno => 20);
+    -- Resultado: El área es 200
+    
+END;
+/
