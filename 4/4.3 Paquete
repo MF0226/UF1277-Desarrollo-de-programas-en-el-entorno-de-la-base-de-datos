@@ -1,0 +1,96 @@
+-- ESPECIFICACIÓN DEL PAQUETE (Interfaz)
+-- Se crea o reemplaza la interfaz del paquete llamada 'Calculadora'.
+CREATE OR REPLACE PACKAGE Calculadora AS
+    
+    -- 1. Variable de Estado Pública
+    -- vMemoria: Variable de tipo NUMBER que almacena el resultado de la última operación.
+    -- Al estar declarada en la especificación, es pública y MANTIENE su valor
+    -- durante toda la sesión del usuario (persistencia de estado).
+    vMemoria NUMBER := 0;
+    
+    -- 2. Declaración de Procedimientos Públicos (solo la firma)
+    -- Se define cómo deben ser llamados, pero la lógica se implementa en el cuerpo.
+    
+    -- Procedimiento para Sumar dos números.
+    PROCEDURE Sumar (pUno NUMBER, pDos NUMBER);
+    
+    -- Procedimiento para Restar dos números.
+    PROCEDURE Restar (pUno NUMBER, pDos NUMBER);
+    
+    -- Procedimiento para Multiplicar dos números.
+    PROCEDURE Multiplicar (pUno NUMBER, pDos NUMBER);
+    
+    -- Procedimiento para Dividir dos números.
+    PROCEDURE Dividir (pUno NUMBER, pDos NUMBER);
+    
+END Calculadora;
+/
+
+-- CUERPO DEL PAQUETE (Implementación de la Lógica)
+-- Se crea o reemplaza la implementación del paquete 'Calculadora'.
+CREATE OR REPLACE PACKAGE BODY Calculadora AS
+    
+    -- Implementación del procedimiento Sumar
+    PROCEDURE Sumar (pUno NUMBER, pDos NUMBER) IS
+    BEGIN
+        -- La lógica guarda el resultado directamente en la variable de estado pública.
+        vMemoria := pUno + pDos;
+    END Sumar;
+    
+    -- Implementación del procedimiento Restar
+    PROCEDURE Restar (pUno NUMBER, pDos NUMBER) IS
+    BEGIN
+        vMemoria := pUno - pDos;
+    END Restar;
+    
+    -- Implementación del procedimiento Multiplicar
+    PROCEDURE Multiplicar (pUno NUMBER, pDos NUMBER) IS
+    BEGIN
+        vMemoria := pUno * pDos;
+    END Multiplicar;
+    
+    -- Implementación del procedimiento Dividir
+    PROCEDURE Dividir (pUno NUMBER, pDos NUMBER) IS
+    BEGIN
+        -- Nota: No se incluye manejo de errores (e.g., división por cero),
+        -- pero la lógica básica es correcta.
+        vMemoria := pUno / pDos;
+    END Dividir;
+    
+    -- Si hubiera un bloque BEGIN/END aquí, sería el bloque de inicialización,
+    -- pero para esta implementación no es necesario.
+    
+END Calculadora;
+/
+
+SET SERVEROUTPUT ON
+
+-- Bloque PL/SQL Anónimo para usar el paquete Calculadora.
+-- Resuelve la operación algebraica: (((5 + 3) * 5) - 10) / 2
+BEGIN
+    -- 1. Suma: 5 + 3 = 8
+    -- Llama al procedimiento Sumar del paquete.
+    -- El resultado (8) se guarda en la variable de estado pública Calculadora.vMemoria.
+    Calculadora.Sumar(5, 3);
+    
+    -- 2. Multiplicación: 8 * 5 = 40
+    -- Utiliza el resultado anterior (vMemoria, que es 8) como primer operando.
+    -- El nuevo resultado (40) se guarda en Calculadora.vMemoria.
+    Calculadora.Multiplicar(Calculadora.vMemoria, 5);
+    
+    -- 3. Resta: 40 - 10 = 30
+    -- Utiliza el resultado actual (vMemoria, que es 40).
+    -- El nuevo resultado (30) se guarda en Calculadora.vMemoria.
+    Calculadora.Restar(Calculadora.vMemoria, 10);
+    
+    -- 4. División: 30 / 2 = 15
+    -- Utiliza el resultado actual (vMemoria, que es 30).
+    -- El resultado final (15) se guarda en Calculadora.vMemoria.
+    Calculadora.Dividir(Calculadora.vMemoria, 2);
+    
+    -- 5. Resultado
+    -- Muestra el valor final almacenado en la variable de estado del paquete.
+    DBMS_OUTPUT.PUT_LINE('El resultado es ' || Calculadora.vMemoria);
+    
+END;
+/
